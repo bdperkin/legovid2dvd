@@ -3,6 +3,8 @@
 use strict;
 use warnings;
 use WWW::Curl::Easy;
+use XML::XPath;
+use XML::XPath::XMLParser;
 
 my $sitemap = "http://www.lego.com/en-us/videos/sitemap?xml=1";
 
@@ -24,6 +26,12 @@ $code = $curl->perform();
 my $err  = $curl->errbuf;                            # report any error message
 my $info = $curl->getinfo(CURLINFO_SIZE_DOWNLOAD);
 
-#print $body;
+my $xp = XML::XPath->new($body);
+
+my $nodeset = $xp->find('/urlset/url/loc');          # find all locations
+
+foreach my $node ( $nodeset->get_nodelist ) {
+    print "FOUND\n\n", XML::XPath::XMLParser::as_string($node), "\n\n";
+}
 
 $curl->cleanup();                                    # optional
