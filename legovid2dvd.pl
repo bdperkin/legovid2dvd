@@ -78,18 +78,24 @@ my $totalvideos    = 0;  # Total number of videos
 # Initialize GetOptions variables
 my $optcurlverbose;
 my $optdebug;
+my $optgallery = ".*";
+my $optlist;
 my $optquiet;
 my $optverbose;
 
 GetOptions(
-    "C"        => \$optcurlverbose,
-    "curlvrbs" => \$optcurlverbose,
-    "d"        => \$optdebug,
-    "debug"    => \$optdebug,
-    "q"        => \$optquiet,
-    "quiet"    => \$optquiet,
-    "v"        => \$optverbose,
-    "verbose"  => \$optverbose,
+    "C"         => \$optcurlverbose,
+    "curlvrbs"  => \$optcurlverbose,
+    "d"         => \$optdebug,
+    "debug"     => \$optdebug,
+    "g=s"       => \$optgallery,
+    "gallery=s" => \$optgallery,
+    "l"         => \$optlist,
+    "list"      => \$optlist,
+    "q"         => \$optquiet,
+    "quiet"     => \$optquiet,
+    "v"         => \$optverbose,
+    "verbose"   => \$optverbose,
 );
 
 ################################################################################
@@ -112,7 +118,7 @@ if ($optdebug) {
 # Main function
 ################################################################################
 if ( $DBG > 0 ) {
-    print "Loading...\n";
+    print "Loading...";
 }
 my $browser = WWW::Curl::Easy->new;    # an alias for WWW::Curl::Easy::init
 if ($optcurlverbose) {
@@ -144,6 +150,8 @@ my $info = $browser->getinfo(CURLINFO_SIZE_DOWNLOAD);
 # Parse sitemap data
 my $xp = XML::XPath->new($body);
 
+my %gallery;
+
 my $urlnodes = $xp->find('/urlset/url');
 foreach my $url ( $urlnodes->get_nodelist ) {
     $vidcounter++;
@@ -169,40 +177,59 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         if ( $DBG > 2 ) {
             print $vidcounter . "\t" . $url->string_value . "\n";
             print "$vidcounter\tloc\t" . $locnode->string_value . "\n";
-            print "$vidcounter\tvideo:thumbnail_loc\t"
+            print "$vidcounter\t\tvideo:thumbnail_loc\t"
               . $video_thumbnail_loc->string_value . "\n";
-            print "$vidcounter\tvideo:title\t"
+            print "$vidcounter\t\tvideo:title\t"
               . $video_title->string_value . "\n";
-            print "$vidcounter\tvideo:description\t"
+            print "$vidcounter\t\tvideo:description\t"
               . $video_description->string_value . "\n";
-            print "$vidcounter\tvideo:content_loc\t"
+            print "$vidcounter\t\tvideo:content_loc\t"
               . $video_content_loc->string_value . "\n";
-            print "$vidcounter\tvideo:duration\t"
+            print "$vidcounter\t\tvideo:duration\t"
               . $video_duration->string_value . "\n";
-            print "$vidcounter\tvideo:publication_date\t"
+            print "$vidcounter\t\tvideo:publication_date\t"
               . $video_publication_date->string_value . "\n";
-            print "$vidcounter\tvideo:expiration_date\t"
+            print "$vidcounter\t\tvideo:expiration_date\t"
               . $video_expiration_date->string_value . "\n";
-            print "$vidcounter\tvideo:view_count\t"
+            print "$vidcounter\t\tvideo:view_count\t"
               . $video_view_count->string_value . "\n";
-            print "$vidcounter\tvideo:family_friendly\t"
+            print "$vidcounter\t\tvideo:family_friendly\t"
               . $video_family_friendly->string_value . "\n";
-            print "$vidcounter\tvideo:gallery_loc\t"
+            print "$vidcounter\t\tvideo:gallery_loc\t"
               . $video_gallery_loc->string_value . "\n";
-            print "$vidcounter\tvideo:gallery_loc/\@title\t"
+            print "$vidcounter\t\tvideo:gallery_loc/\@title\t"
               . $video_gallery_loc_title->string_value . "\n";
+        }
+
+        my $vgpath = $video_gallery_loc->string_value;
+        my @revvgpath = reverse( split( /\//, $vgpath ) );
+        $gallery{ $revvgpath[0] } = $video_gallery_loc_title->string_value;
+        if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
+            if ( $DBG > 1 ) {
+                print "!";
+            }
         }
     }
 }
-if ( $DBG > 1 ) {
-    print "\n";
-}
 
 $browser->cleanup();    # optional
+
+if ($optlist) {
+    if ( $DBG > 0 ) {
+        print "\n";
+    }
+    foreach my $title ( keys %gallery ) {
+        printf( "\t* %-20s%s\n", $title, $gallery{$title} );
+    }
+    exit;
+}
 
 # cURL callback
 sub chunk {
     my ( $data, $pointer ) = @_;
     ${$pointer} .= $data;
     return length($data);
+}
+if ( $DBG > 0 ) {
+    print "done.\n";
 }
