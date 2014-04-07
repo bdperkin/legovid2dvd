@@ -51,6 +51,8 @@ my $sitemap = "http://www.lego.com/en-us/videos/sitemap?xml=1";
 my $headers = "";
 my $body    = "";
 
+my $cn = "Cannot";
+
 ################################################################################
 # Specify module configuration options to be enabled
 ################################################################################
@@ -118,13 +120,15 @@ GetOptions(
 if ($optquiet) {
     $DBG = 0;
 }
+else {
+    $| = 1;
+}
+
 if ($optverbose) {
     $DBG = 2;
-    $|   = 1;
 }
 if ($optdebug) {
     $DBG = 3;
-    $|   = 1;
 }
 
 ################################################################################
@@ -133,34 +137,48 @@ if ($optdebug) {
 if ( $DBG > 0 ) {
     print "Loading...";
 }
+if ( $DBG > 2 ) { print "Initializing WWW::Curl::Easy...\n"; }
 my $browser = WWW::Curl::Easy->new;    # an alias for WWW::Curl::Easy::init
+
 if ($optcurlverbose) {
     $curloptverbose = 1;
 }
+if ( $DBG > 2 ) { print "Setting CURLOPT_VERBOSE to $curloptverbose...\n"; }
 $browser->setopt( CURLOPT_VERBOSE, $curloptverbose );
 
-if ( $DBG > 1 ) {
-    print $browser->version(CURLVERSION_NOW);
+if ( $DBG > 2 ) {
+    print "CURLVERSION_NOW is: " . $browser->version(CURLVERSION_NOW) . "\n";
 }
 
 # Configure browser and get sitemap
+if ( $DBG > 2 ) { print "Setting CURLOPT_URL to $sitemap...\n"; }
 my $code = $browser->setopt( CURLOPT_URL, $sitemap );
-$code = $browser->setopt( CURLOPT_WRITEFUNCTION, \&chunk );
-$code = $browser->setopt( CURLOPT_WRITEHEADER,   \$headers );
-$code = $browser->setopt( CURLOPT_FILE,          \$body );
+if ( $DBG > 2 ) { print "Setting CURLOPT_WRITEHEADER variable...\n"; }
+$code = $browser->setopt( CURLOPT_WRITEHEADER, \$headers );
+if ( $DBG > 2 ) { print "Setting CURLOPT_FILE variable...\n"; }
+$code = $browser->setopt( CURLOPT_FILE, \$body );
+if ( $DBG > 2 ) { print "Performing GET...\n"; }
 $code = $browser->perform();
+if ( $DBG > 2 ) { print "Reporing any error messages:\n"; }
 my $err  = $browser->errbuf;                          # report any error message
 my $info = $browser->getinfo(CURLINFO_SIZE_DOWNLOAD);
+if ( $DBG > 2 ) { print "Got CURLINFO_SIZE_DOWNLOAD as $info.\n"; }
 
 # Parse sitemap data
+if ( $DBG > 2 ) { print "Initializing XML::XPath...\n"; }
 my $xp = XML::XPath->new($body);
 
 my %gallery;
 
+if ( $DBG > 2 ) { print "Finding URLs within URL Set...\n"; }
 my $urlnodes = $xp->find('/urlset/url');
+if ( $DBG > 2 ) { print "Getting node list...\n"; }
 foreach my $url ( $urlnodes->get_nodelist ) {
     $vidcounter++;
     $totalvideos = $vidcounter;
+    if ( $DBG > 0 ) {
+        print "\rLoading...$totalvideos ";
+    }
     if ( $DBG > 1 ) {
         print ".";
     }
@@ -179,92 +197,120 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         my $video_gallery_loc       = $video->find('video:gallery_loc');
         my $video_gallery_loc_title = $video->find('video:gallery_loc/@title');
 
-        if ( $DBG > 2 ) {
-            print $vidcounter . "\t" . $url->string_value . "\n";
-            print "$vidcounter\tloc\t" . $locnode->string_value . "\n";
-            print "$vidcounter\t\tvideo:thumbnail_loc\t"
-              . $video_thumbnail_loc->string_value . "\n";
-            print "$vidcounter\t\tvideo:title\t"
-              . $video_title->string_value . "\n";
-            print "$vidcounter\t\tvideo:description\t"
-              . $video_description->string_value . "\n";
-            print "$vidcounter\t\tvideo:content_loc\t"
-              . $video_content_loc->string_value . "\n";
-            print "$vidcounter\t\tvideo:duration\t"
-              . $video_duration->string_value . "\n";
-            print "$vidcounter\t\tvideo:publication_date\t"
-              . $video_publication_date->string_value . "\n";
-            print "$vidcounter\t\tvideo:expiration_date\t"
-              . $video_expiration_date->string_value . "\n";
-            print "$vidcounter\t\tvideo:view_count\t"
-              . $video_view_count->string_value . "\n";
-            print "$vidcounter\t\tvideo:family_friendly\t"
-              . $video_family_friendly->string_value . "\n";
-            print "$vidcounter\t\tvideo:gallery_loc\t"
-              . $video_gallery_loc->string_value . "\n";
-            print "$vidcounter\t\tvideo:gallery_loc/\@title\t"
-              . $video_gallery_loc_title->string_value . "\n";
+        my $vt    = $video_title->string_value;
+        my $vglt  = $video_gallery_loc_title->string_value;
+        my $urlsv = $url->string_value;
+        my $lnsv  = $locnode->string_value;
+        my $vtl   = $video_thumbnail_loc->string_value;
+        my $vde   = $video_description->string_value;
+        my $vcl   = $video_content_loc->string_value;
+        my $vdu   = $video_duration->string_value;
+        my $vpd   = $video_publication_date->string_value;
+        my $ved   = $video_expiration_date->string_value;
+        my $vvc   = $video_view_count->string_value;
+        my $vff   = $video_family_friendly->string_value;
+        my $vgl   = $video_gallery_loc->string_value;
+
+        if ( $DBG > 0 ) {
+            printf( "[ %.30s ] %-70s\r", $vglt, $vt );
         }
 
-        my $vgpath = $video_gallery_loc->string_value;
+        if ( $DBG > 2 ) {
+            print "$vidcounter\t\t" . $urlsv . "\n";
+            print "$vidcounter\tloc\t" . $lnsv . "\n";
+            print "$vidcounter\t\tvideo:thumbnail_loc\t" . $vtl . "\n";
+            print "$vidcounter\t\tvideo:title\t" . $vt . "\n";
+            print "$vidcounter\t\tvideo:description\t" . $vde . "\n";
+            print "$vidcounter\t\tvideo:content_loc\t" . $vcl . "\n";
+            print "$vidcounter\t\tvideo:duration\t" . $vdu . "\n";
+            print "$vidcounter\t\tvideo:publication_date\t" . $vpd . "\n";
+            print "$vidcounter\t\tvideo:expiration_date\t" . $ved . "\n";
+            print "$vidcounter\t\tvideo:view_count\t" . $vvc . "\n";
+            print "$vidcounter\t\tvideo:family_friendly\t" . $vff . "\n";
+            print "$vidcounter\t\tvideo:gallery_loc\t" . $vgl . "\n";
+            print "$vidcounter\t\tvideo:gallery_loc/\@title\t" . $vglt . "\n";
+        }
+
+        my $vgpath = $vgl;
         my @revvgpath = reverse( split( /\//, $vgpath ) );
-        $gallery{ $revvgpath[0] } = $video_gallery_loc_title->string_value;
-        if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
-            if ( $DBG > 1 ) {
-                print "!";
-            }
-            my ( $scheme, $auth, $path, $query, $frag ) = uri_split($locnode);
-            my $dirname = $optdownload . $path;
-            unless ( -d "$dirname" ) {
-                unless ( mkpath($dirname) ) {
-                    die "Cannot create content directory $dirname: $!\n";
+        $gallery{ $revvgpath[0] } = $vglt;
+        unless ($optlist) {
+            if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
+                if ( $DBG > 1 ) {
+                    print "!";
                 }
-            }
-            my $try = 0;
-            my $chk = 1;
-            while ( $try lt $optattempts ) {
-                my $tryname = $dirname . "/" . $try;
-                my $chkname = $dirname . "/" . $chk;
-                unless ( -d "$tryname" ) {
-                    unless ( mkpath($tryname) ) {
-                        die "Cannot create content directory $tryname: $!\n";
+                my ( $scheme, $auth, $path, $query, $frag ) =
+                  uri_split($locnode);
+                my $dirname = $optdownload . $path;
+                unless ( -d "$dirname" ) {
+                    unless ( mkpath($dirname) ) {
+                        die "$cn create content directory $dirname: $!\n";
                     }
                 }
+                my $try = 0;
+                my $chk = 1;
+                while ( $try lt $optattempts ) {
+                    my $tryname = $dirname . "/" . $try;
+                    my $chkname = $dirname . "/" . $chk;
+                    unless ( -d "$tryname" ) {
+                        unless ( mkpath($tryname) ) {
+                            die "$cn create content directory $tryname: $!\n";
+                        }
+                    }
 
-                xml2txt( $tryname, "loc.txt", $locnode->string_value );
-                xml2txt( $tryname, "thumbnail_loc.txt",
-                    $video_thumbnail_loc->string_value );
-                xml2txt( $tryname, "title.txt", $video_title->string_value );
-                xml2txt( $tryname, "description.txt",
-                    $video_description->string_value );
-                xml2txt( $tryname, "content_loc.txt",
-                    $video_content_loc->string_value );
-                xml2txt( $tryname, "duration.txt",
-                    $video_duration->string_value );
-                xml2txt( $tryname, "publication_date.txt",
-                    $video_publication_date->string_value );
-                xml2txt( $tryname, "expiration_date.txt",
-                    $video_expiration_date->string_value );
-                xml2txt( $tryname, "gallery_loc.txt",
-                    $video_gallery_loc->string_value );
-                xml2txt( $tryname, "gallery_title.txt",
-                    $video_gallery_loc_title->string_value );
+                    xml2txt( $tryname, "loc.txt", $lnsv );
+                    check( $tryname, $chkname, "loc.txt" );
 
-                check( $tryname, $chkname, "loc.txt" );
-                check( $tryname, $chkname, "thumbnail_loc.txt" );
-                check( $tryname, $chkname, "title.txt" );
-                check( $tryname, $chkname, "description.txt" );
-                check( $tryname, $chkname, "content_loc.txt" );
-                check( $tryname, $chkname, "duration.txt" );
-                check( $tryname, $chkname, "publication_date.txt" );
-                check( $tryname, $chkname, "expiration_date.txt" );
-                check( $tryname, $chkname, "gallery_loc.txt" );
-                check( $tryname, $chkname, "gallery_title.txt" );
+                    xml2txt( $tryname, "thumbnail_loc.txt", $vtl );
+                    check( $tryname, $chkname, "thumbnail_loc.txt" );
+                    if ($vtl) {
+                        wget( $tryname, basename($vtl), $vtl );
+                        check( $tryname, $chkname, basename($vtl) );
+                    }
+                    else {
+                        if ( $DBG > 1 ) {
+                            warn "No URI found for $tryname thumbnail_loc!\n";
+                        }
+                    }
 
-                $try++;
-                $chk++;
-                if ( $chk eq $optattempts ) {
-                    $chk = 0;
+                    xml2txt( $tryname, "title.txt", $vt );
+                    check( $tryname, $chkname, "title.txt" );
+
+                    xml2txt( $tryname, "description.txt", $vde );
+                    check( $tryname, $chkname, "description.txt" );
+
+                    xml2txt( $tryname, "content_loc.txt", $vcl );
+                    check( $tryname, $chkname, "content_loc.txt" );
+                    if ($vcl) {
+                        wget( $tryname, basename($vcl), $vcl );
+                        check( $tryname, $chkname, basename($vcl) );
+                    }
+                    else {
+                        if ( $DBG > 1 ) {
+                            warn "No URI found for $tryname content_loc!\n";
+                        }
+                    }
+
+                    xml2txt( $tryname, "duration.txt", $vdu );
+                    check( $tryname, $chkname, "duration.txt" );
+
+                    xml2txt( $tryname, "publication_date.txt", $vpd );
+                    check( $tryname, $chkname, "publication_date.txt" );
+
+                    xml2txt( $tryname, "expiration_date.txt", $ved );
+                    check( $tryname, $chkname, "expiration_date.txt" );
+
+                    xml2txt( $tryname, "gallery_loc.txt", $vgl );
+                    check( $tryname, $chkname, "gallery_loc.txt" );
+
+                    xml2txt( $tryname, "gallery_title.txt", $vglt );
+                    check( $tryname, $chkname, "gallery_title.txt" );
+
+                    $try++;
+                    $chk++;
+                    if ( $chk eq $optattempts ) {
+                        $chk = 0;
+                    }
                 }
             }
         }
@@ -283,19 +329,12 @@ if ($optlist) {
     exit;
 }
 
-# cURL callback
-sub chunk {
-    my ( $data, $pointer ) = @_;
-    ${$pointer} .= $data;
-    return length($data);
-}
-
 # Dump XML data into text files
 sub xml2txt {
     my ( $tryname, $filename, $filedata ) = @_;
     if ( !-f "$tryname/$filename" ) {
         unless ( open( TXTFILE, ">$tryname/$filename" ) ) {
-            die "Cannot create text file $filename in $tryname: $!\n";
+            die "$cn create text file $filename in $tryname: $!\n";
         }
         binmode TXTFILE, ":utf8";
         print TXTFILE $filedata . "\n";
@@ -303,59 +342,118 @@ sub xml2txt {
     }
 }
 
+# Get the base file name based on a full path
+sub basename {
+    my $fulluri  = $_[0];
+    my @fullpath = split( /\//, $fulluri );
+    my @revpath  = reverse(@fullpath);
+    return $revpath[0];
+}
+
+# Dump binary data into local files
+sub wget {
+    my ( $tryname, $filename, $dluri ) = @_;
+    if ( !-f "$tryname/$filename" ) {
+        my $localfile = "$tryname/$filename";
+        my $fileb;
+        my $retry = 0;
+        while ( $retry < $optattempts ) {
+            $retry++;
+            $browser->setopt( CURLOPT_URL, $dluri );
+            unless ( open( $fileb, ">", $localfile ) ) {
+                die "$cn open $localfile for writing: $!\n";
+            }
+            binmode($fileb);
+            $browser->setopt( CURLOPT_WRITEDATA, $fileb );
+            if ( $DBG > 1 ) {
+                print "+";
+                if ( $DBG > 2 ) {
+                    print "Getting $dluri and saving content at $localfile...";
+                }
+            }
+            $code = $browser->perform;
+            if ( $retry > $optattempts ) {
+                die "$cn get $dluri -- $code "
+                  . $browser->strerror($code) . " "
+                  . $browser->errbuf . "\n"
+                  unless ( $code == 0 );
+            }
+            else {
+                warn "$cn get $dluri -- $code "
+                  . $browser->strerror($code) . " "
+                  . $browser->errbuf . "\n"
+                  unless ( $code == 0 );
+            }
+            close($fileb);
+            if ( $DBG > 2 ) {
+                print "done.\n";
+            }
+        }
+    }
+}
+
 # Check for differences in files, if none, make hard links
 sub check {
     my ( $tryname, $chkname, $filename ) = @_;
-    if ( !-f "$tryname/$filename" ) {
-        die "Cannot find file $tryname/$filename: $!\n";
+    my $tryf = "$tryname/$filename";
+    my $chkf = "$chkname/$filename";
+    my $tfcf = "$tryf and $chkf";
+    if ( !-f "$tryf" ) {
+        die "$cn find file $tryf: $!\n";
     }
 
-    my @stattry = stat("$tryname/$filename");
+    my @stattry = stat("$tryf");
     if ( $stattry[3] != $optattempts ) {
-        if ( !-f "$chkname/$filename" ) {
-            warn "Cannot find file $chkname/$filename: $!\n";
+        if ( !-f "$chkf" ) {
+            if ( $DBG > 1 ) {
+                warn "$cn find file $chkf: $!\n";
+            }
         }
         else {
-            my @statchk = stat("$chkname/$filename");
+            my @statchk = stat("$chkf");
             if ( $statchk[3] != $optattempts ) {
-                unless ( compare( "$tryname/$filename", "$chkname/$filename" ) )
-                {
+                unless ( compare( "$tryf", "$chkf" ) ) {
                     if ( $DBG > 1 ) {
-                        print
-"Files $tryname/$filename and $chkname/$filename match.\n";
+                        print "=";
+                        if ( $DBG > 2 ) {
+                            print "Files $tfcf match.\n";
+                        }
                     }
-                    unless ( unlink("$chkname/$filename") ) {
-                        die "Cannot remove $chkname/$filename: $!\n";
+                    unless ( unlink("$chkf") ) {
+                        die "$cn remove $chkf: $!\n";
                     }
-                    unless (
-                        link( "$tryname/$filename", "$chkname/$filename" ) )
-                    {
-                        die
-"Cannot link $tryname/$filename to $chkname/$filename: $!\n";
+                    unless ( link( "$tryf", "$chkf" ) ) {
+                        die "$cn link $tryf to $chkf: $!\n";
                     }
                 }
                 else {
-                    warn
-"Files $tryname/$filename and $chkname/$filename do NOT match.\n";
-                    unless ( unlink("$tryname/$filename") ) {
-                        die "Cannot remove $tryname/$filename: $!\n";
+                    if ( $DBG > 1 ) {
+                        warn "Files $tfcf do NOT match.\n";
                     }
-                    unless ( unlink("$chkname/$filename") ) {
-                        die "Cannot remove $chkname/$filename: $!\n";
+                    unless ( unlink("$tryf") ) {
+                        die "$cn remove $tryf: $!\n";
+                    }
+                    unless ( unlink("$chkf") ) {
+                        die "$cn remove $chkf: $!\n";
                     }
                 }
             }
             else {
                 if ( $DBG > 1 ) {
-                    print
-"Files $tryname/$filename and $chkname/$filename have all symbolic links.\n";
+                    print "=";
+                    if ( $DBG > 2 ) {
+                        print "Files $tfcf have all symbolic links.\n";
+                    }
                 }
             }
         }
     }
     else {
         if ( $DBG > 1 ) {
-            print "File $tryname/$filename has all symbolic links.\n";
+            print "=";
+            if ( $DBG > 2 ) {
+                print "File $tryf has all symbolic links.\n";
+            }
         }
     }
 }
