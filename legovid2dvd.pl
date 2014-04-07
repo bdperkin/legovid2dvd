@@ -1,4 +1,4 @@
-#!/usr/bin/perl -Tw
+#!/usr/bin/perl -w
 #
 # legovid2dvd.pl - LEGO® video downloader and DVD authoring tool.
 # Copyright (C) 2014-2014  Brandon Perkins <bperkins@redhat.com>
@@ -22,15 +22,18 @@
 ################################################################################
 # Import some semantics into the current package from the named modules
 ################################################################################
-use strict;             # Restrict unsafe constructs
-use warnings;           # Control optional warnings
-use Getopt::Long;       # Getopt::Long - Extended processing
-                        # of command line options
-use WWW::Curl::Easy;    # WWW::Curl - Perl extension interface
-                        # for libcurl
-use XML::XPath;         # XML::XPath - a set of modules for
-                        # parsing and evaluating XPath
-                        # statements
+use strict;                               # Restrict unsafe constructs
+use warnings;                             # Control optional warnings
+use File::Path;                           # Create or remove directory trees
+use Getopt::Long;                         # Getopt::Long - Extended processing
+                                          # of command line options
+use URI::Split qw(uri_split uri_join);    # URI::Split - Parse and compose URI
+                                          # strings
+use WWW::Curl::Easy;                      # WWW::Curl - Perl extension interface
+                                          # for libcurl
+use XML::XPath;                           # XML::XPath - a set of modules for
+                                          # parsing and evaluating XPath
+                                          # statements
 
 ################################################################################
 # Declare constants
@@ -76,26 +79,34 @@ my $totalvideos    = 0;  # Total number of videos
 # options, with GNU extensions.
 ################################################################################
 # Initialize GetOptions variables
+my $optattempts = 3;
 my $optcurlverbose;
 my $optdebug;
-my $optgallery = ".*";
+my $optdownload = ".";
+my $optgallery  = ".*";
 my $optlist;
 my $optquiet;
 my $optverbose;
 
 GetOptions(
-    "C"         => \$optcurlverbose,
-    "curlvrbs"  => \$optcurlverbose,
-    "d"         => \$optdebug,
-    "debug"     => \$optdebug,
-    "g=s"       => \$optgallery,
-    "gallery=s" => \$optgallery,
-    "l"         => \$optlist,
-    "list"      => \$optlist,
-    "q"         => \$optquiet,
-    "quiet"     => \$optquiet,
-    "v"         => \$optverbose,
-    "verbose"   => \$optverbose,
+    "a=i"        => \$optattempts,
+    "attempts=i" => \$optattempts,
+    "C"          => \$optcurlverbose,
+    "curlvrbs"   => \$optcurlverbose,
+    "d"          => \$optdebug,
+    "debug"      => \$optdebug,
+    "D=s"        => \$optdownload,
+    "download=s" => \$optdownload,
+    "g=s"        => \$optgallery,
+    "gallery=s"  => \$optgallery,
+    "l"          => \$optlist,
+    "list"       => \$optlist,
+    "q"          => \$optquiet,
+    "quiet"      => \$optquiet,
+    "t=s"        => \$optgallery,
+    "theme=s"    => \$optgallery,
+    "v"          => \$optverbose,
+    "verbose"    => \$optverbose,
 );
 
 ################################################################################
@@ -125,17 +136,9 @@ if ($optcurlverbose) {
     $curloptverbose = 1;
 }
 $browser->setopt( CURLOPT_VERBOSE, $curloptverbose );
-my $curlversion = $browser->version(CURLVERSION_NOW);
-chomp $curlversion;
-my @curlversions = split( /\s/, $curlversion );
-my %libversions;
-foreach my $curlver (@curlversions) {
-    my ( $lib, $ver ) = split( /\//, $curlver );
-    my ( $major, $minor, $patch ) = split( /\./, $ver );
-    $libversions{$lib}              = $ver;
-    $libversions{ $lib . '-major' } = $major;
-    $libversions{ $lib . '-minor' } = $minor;
-    $libversions{ $lib . '-patch' } = $patch;
+
+if ( $DBG > 1 ) {
+    print $browser->version(CURLVERSION_NOW);
 }
 
 # Configure browser and get sitemap
@@ -207,6 +210,88 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
             if ( $DBG > 1 ) {
                 print "!";
+            }
+            my ( $scheme, $auth, $path, $query, $frag ) = uri_split($locnode);
+            my $dirname = $optdownload . $path;
+            unless ( -d "$dirname" ) {
+                unless ( mkpath($dirname) ) {
+                    die "Cannot create content directory $dirname: $!\n";
+                }
+            }
+            my $try = 0;
+            while ( $try lt $optattempts ) {
+                my $tryname = $dirname . "/" . $try;
+                unless ( -d "$tryname" ) {
+                    unless ( mkpath($tryname) ) {
+                        die "Cannot create content directory $tryname: $!\n";
+                    }
+                }
+
+                unless ( open( TXTFILE, ">$tryname/loc.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $locnode->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/thumbnail_loc.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_thumbnail_loc->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/title.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                binmode TXTFILE, ":utf8";
+                print TXTFILE $video_title->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/description.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                binmode TXTFILE, ":utf8";
+                print TXTFILE $video_description->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/content_loc.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_content_loc->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/duration.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_duration->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/publication_date.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_publication_date->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/expiration_date.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_expiration_date->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/gallery_loc.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                print TXTFILE $video_gallery_loc->string_value . "\n";
+                close(TXTFILE);
+
+                unless ( open( TXTFILE, ">$tryname/gallery_title.txt" ) ) {
+                    die "Cannot create text file: $!\n";
+                }
+                binmode TXTFILE, ":utf8";
+                print TXTFILE $video_gallery_loc_title->string_value . "\n";
+                close(TXTFILE);
+
+                $try++;
+
             }
         }
     }
