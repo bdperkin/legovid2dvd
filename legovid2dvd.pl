@@ -24,6 +24,7 @@
 ################################################################################
 use strict;                               # Restrict unsafe constructs
 use warnings;                             # Control optional warnings
+use File::Compare;                        # Compare files or filehandles
 use File::Path;                           # Create or remove directory trees
 use Getopt::Long;                         # Getopt::Long - Extended processing
                                           # of command line options
@@ -38,11 +39,12 @@ use XML::XPath;                           # XML::XPath - a set of modules for
 ################################################################################
 # Declare constants
 ################################################################################
-binmode STDOUT, ":utf8";    # Output UTF-8 using the :utf8 output layer.
-                            # This ensures that the output is completely
-                            # UTF-8, and removes any debug warnings.
+binmode STDOUT, ":utf8";    # Out/Err/Input UTF-8 using the :utf8
+binmode STDERR, ":utf8";    # out/err/input layer.  This ensures that the
+binmode STDIN,  ":utf8";    # out/err/input is completelyUTF-8, and removes any
+                            # debug warnings.
 
-$ENV{PATH} = "/usr/bin:/bin";    # Keep taint happy
+$ENV{PATH} = "/usr/bin:/bin";
 
 my $sitemap = "http://www.lego.com/en-us/videos/sitemap?xml=1";
 
@@ -219,79 +221,51 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                 }
             }
             my $try = 0;
+            my $chk = 1;
             while ( $try lt $optattempts ) {
                 my $tryname = $dirname . "/" . $try;
+                my $chkname = $dirname . "/" . $chk;
                 unless ( -d "$tryname" ) {
                     unless ( mkpath($tryname) ) {
                         die "Cannot create content directory $tryname: $!\n";
                     }
                 }
 
-                unless ( open( TXTFILE, ">$tryname/loc.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $locnode->string_value . "\n";
-                close(TXTFILE);
+                xml2txt( $tryname, "loc.txt", $locnode->string_value );
+                xml2txt( $tryname, "thumbnail_loc.txt",
+                    $video_thumbnail_loc->string_value );
+                xml2txt( $tryname, "title.txt", $video_title->string_value );
+                xml2txt( $tryname, "description.txt",
+                    $video_description->string_value );
+                xml2txt( $tryname, "content_loc.txt",
+                    $video_content_loc->string_value );
+                xml2txt( $tryname, "duration.txt",
+                    $video_duration->string_value );
+                xml2txt( $tryname, "publication_date.txt",
+                    $video_publication_date->string_value );
+                xml2txt( $tryname, "expiration_date.txt",
+                    $video_expiration_date->string_value );
+                xml2txt( $tryname, "gallery_loc.txt",
+                    $video_gallery_loc->string_value );
+                xml2txt( $tryname, "gallery_title.txt",
+                    $video_gallery_loc_title->string_value );
 
-                unless ( open( TXTFILE, ">$tryname/thumbnail_loc.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_thumbnail_loc->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/title.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                binmode TXTFILE, ":utf8";
-                print TXTFILE $video_title->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/description.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                binmode TXTFILE, ":utf8";
-                print TXTFILE $video_description->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/content_loc.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_content_loc->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/duration.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_duration->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/publication_date.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_publication_date->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/expiration_date.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_expiration_date->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/gallery_loc.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                print TXTFILE $video_gallery_loc->string_value . "\n";
-                close(TXTFILE);
-
-                unless ( open( TXTFILE, ">$tryname/gallery_title.txt" ) ) {
-                    die "Cannot create text file: $!\n";
-                }
-                binmode TXTFILE, ":utf8";
-                print TXTFILE $video_gallery_loc_title->string_value . "\n";
-                close(TXTFILE);
+                check( $tryname, $chkname, "loc.txt" );
+                check( $tryname, $chkname, "thumbnail_loc.txt" );
+                check( $tryname, $chkname, "title.txt" );
+                check( $tryname, $chkname, "description.txt" );
+                check( $tryname, $chkname, "content_loc.txt" );
+                check( $tryname, $chkname, "duration.txt" );
+                check( $tryname, $chkname, "publication_date.txt" );
+                check( $tryname, $chkname, "expiration_date.txt" );
+                check( $tryname, $chkname, "gallery_loc.txt" );
+                check( $tryname, $chkname, "gallery_title.txt" );
 
                 $try++;
-
+                $chk++;
+                if ( $chk eq $optattempts ) {
+                    $chk = 0;
+                }
             }
         }
     }
@@ -315,6 +289,77 @@ sub chunk {
     ${$pointer} .= $data;
     return length($data);
 }
+
+# Dump XML data into text files
+sub xml2txt {
+    my ( $tryname, $filename, $filedata ) = @_;
+    if ( !-f "$tryname/$filename" ) {
+        unless ( open( TXTFILE, ">$tryname/$filename" ) ) {
+            die "Cannot create text file $filename in $tryname: $!\n";
+        }
+        binmode TXTFILE, ":utf8";
+        print TXTFILE $filedata . "\n";
+        close(TXTFILE);
+    }
+}
+
+# Check for differences in files, if none, make hard links
+sub check {
+    my ( $tryname, $chkname, $filename ) = @_;
+    if ( !-f "$tryname/$filename" ) {
+        die "Cannot find file $tryname/$filename: $!\n";
+    }
+
+    my @stattry = stat("$tryname/$filename");
+    if ( $stattry[3] != $optattempts ) {
+        if ( !-f "$chkname/$filename" ) {
+            warn "Cannot find file $chkname/$filename: $!\n";
+        }
+        else {
+            my @statchk = stat("$chkname/$filename");
+            if ( $statchk[3] != $optattempts ) {
+                unless ( compare( "$tryname/$filename", "$chkname/$filename" ) )
+                {
+                    if ( $DBG > 1 ) {
+                        print
+"Files $tryname/$filename and $chkname/$filename match.\n";
+                    }
+                    unless ( unlink("$chkname/$filename") ) {
+                        die "Cannot remove $chkname/$filename: $!\n";
+                    }
+                    unless (
+                        link( "$tryname/$filename", "$chkname/$filename" ) )
+                    {
+                        die
+"Cannot link $tryname/$filename to $chkname/$filename: $!\n";
+                    }
+                }
+                else {
+                    warn
+"Files $tryname/$filename and $chkname/$filename do NOT match.\n";
+                    unless ( unlink("$tryname/$filename") ) {
+                        die "Cannot remove $tryname/$filename: $!\n";
+                    }
+                    unless ( unlink("$chkname/$filename") ) {
+                        die "Cannot remove $chkname/$filename: $!\n";
+                    }
+                }
+            }
+            else {
+                if ( $DBG > 1 ) {
+                    print
+"Files $tryname/$filename and $chkname/$filename have all symbolic links.\n";
+                }
+            }
+        }
+    }
+    else {
+        if ( $DBG > 1 ) {
+            print "File $tryname/$filename has all symbolic links.\n";
+        }
+    }
+}
+
 if ( $DBG > 0 ) {
     print "done.\n";
 }
