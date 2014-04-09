@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 #
-# legovid2dvd.pl - LEGO® video downloader and DVD authoring tool.
+# %{NAME}.pl - LEGO® video downloader and DVD authoring tool.
 # Copyright (C) 2014-2014  Brandon Perkins <bperkins@redhat.com>
 #
 # This program is free software; you can redistribute it and/or

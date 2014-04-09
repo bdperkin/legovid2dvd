@@ -1,4 +1,4 @@
-legovid2dvd
+%{NAME}
 ===========
 
 LEGO® video downloader and DVD authoring tool
