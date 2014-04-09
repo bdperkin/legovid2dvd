@@ -1,0 +1,8 @@
+*%{NAME}* [*-q*|*--quiet*] [*-v*|*--verbose*] [*-d*|*--debug*] [*-C*|*--curlvrbs*] [*-l*|*--list*] [*-g* 'gallery'|*--gallery*='gallery'] [*-t* 'gallery'|*--theme*='gallery'] 
+
+*%{NAME}* {*--version*|*-V*}
+
+*%{NAME}* {*--help*|*-h*}
+
+*%{NAME}* {*--man*|*-m*}
+
