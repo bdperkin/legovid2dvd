@@ -30,7 +30,7 @@ Requires:	perl(warnings)
 %define NameLower %{expand:%%(echo %{name} | tr [:upper:] [:lower:])}
 %define Year %{expand:%%(date "+%Y")}
 %define DocFiles ACKNOWLEDGEMENTS AUTHOR AUTHORS AVAILABILITY BUGS CAVEATS COPYING COPYRIGHT DESCRIPTION FILTERS LICENSE NAME NOTES OPTIONS OUTPUT README.md RESOURCES SYNOPSIS
-%define SubFiles %{name} %{name}.8.asciidoc %{DocFiles} man.asciidoc
+%define SubFiles %{name} %{name}.1.asciidoc %{DocFiles} man.asciidoc
 %define DocFormats chunked htmlhelp manpage text xhtml
 
 %description
@@ -51,30 +51,30 @@ Perl script to download LEGO® videos, convert them, and author a DVD.
 %{__sed} -i -e s/%{VERSION}/%{version}/g %{SubFiles}
 %{__sed} -i -e s/%{RELEASE}/%{release}/g %{SubFiles}
 %{__sed} -i -e s/%{YEAR}/%{Year}/g %{SubFiles}
-for f in %{DocFormats}; do %{__mkdir_p} $f; a2x -D $f -d manpage -f $f %{name}.8.asciidoc; done
-groff -e -mandoc -Tascii manpage/%{name}.8 > manpage/%{name}.8.groff
+for f in %{DocFormats}; do %{__mkdir_p} $f; a2x -D $f -d manpage -f $f %{name}.1.asciidoc; done
+groff -e -mandoc -Tascii manpage/%{name}.1 > manpage/%{name}.1.groff
 %{__mkdir_p} pod
-./groff2pod.pl manpage/%{name}.8.groff pod/%{name}.8.pod
-podchecker pod/%{name}.8.pod
-cat pod/%{name}.8.pod >> %{name}
+./groff2pod.pl manpage/%{name}.1.groff pod/%{name}.1.pod
+podchecker pod/%{name}.1.pod
+cat pod/%{name}.1.pod >> %{name}
 perltidy -b %{name}
 podchecker %{name}
-pandoc -f html -t markdown -s -o README.md.pandoc xhtml/%{name}.8.html
+pandoc -f html -t markdown -s -o README.md.pandoc xhtml/%{name}.1.html
 cat README.md.pandoc | %{__grep} -v ^% | %{__sed} -e 's/\*\*/\*/g' | %{__sed} -e 's/^\ \*/\n\ \*/g' | %{__sed} -e 's/\[\*/\[\ \*/g' | %{__sed} -e 's/\*\]/\*\ \]/g' | %{__sed} -e 's/{\*/{\ \*/g' | %{__sed} -e 's/\*}/\*\ }/g' | %{__sed} -e 's/|\*/|\ \*/g' | %{__sed} -e 's/\*|/\*\ |/g' | %{__sed} -e 's/=\*/=\ \*/g' | %{__sed} -e 's/\*=/\*\ =/g' > README.md 
 
 %install
 %{__rm} -rf $RPM_BUILD_ROOT
 %{__mkdir_p} %{buildroot}%{_bindir}
-%{__mkdir_p} %{buildroot}%{_mandir}/man8
+%{__mkdir_p} %{buildroot}%{_mandir}/man1
 %{__install} %{name} %{buildroot}%{_bindir}
-%{__gzip} -c manpage/%{name}.8 > %{buildroot}/%{_mandir}/man8/%{name}.8.gz
+%{__gzip} -c manpage/%{name}.1 > %{buildroot}/%{_mandir}/man1/%{name}.1.gz
 
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %doc %{DocFiles}
 %doc %{DocFormats} pod
-%doc %{_mandir}/man8/%{name}.8.gz
+%doc %{_mandir}/man1/%{name}.1.gz
 
 
 %changelog
