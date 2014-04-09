@@ -1,4 +1,4 @@
-%{NAMEUPPER}(8)
+%{NAMEUPPER}(1)
 ================
 include::man.asciidoc[]
 :doctype: manpage
