@@ -1,5 +1,5 @@
 Name:		legovid2dvd
-Version:	0.0.1
+Version:	0.0.2
 Release:	1%{?dist}
 Summary:	LEGO® video downloader and DVD authoring tool
 
@@ -78,3 +78,6 @@ cat README.md.pandoc | %{__grep} -v ^% | %{__sed} -e 's/\*\*/\*/g' | %{__sed} -e
 
 
 %changelog
+* Tue Apr 08 2014 Brandon Perkins <bperkins@redhat.com> 0.0.2-1
+- new package built with tito
+
