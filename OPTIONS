@@ -1,0 +1,37 @@
+Command line options are used to specify various startup options for %{NAMELOWER}:
+
+*-a* 'attempts', *--attempts*='attempts'::
+    Count of latency tests to perform against selected server.
+
+*-C*, *--curlvrbs*::
+    Set CURLOPT_VERBOSE option to make the fetching more verbose/talkative.
+
+*-d*, *--debug*::
+    Debug output.
+
+*-D* 'directory', *--download*='directory'::
+    Specify a specific download directory.
+
+*-g* 'gallery', *--gallery*='gallery'::
+    Specify a specific gallery by name. (see list option)
+
+*-h*, *--help*::
+    Print or show help information and exit.
+
+*-l*, *--list*::
+    Print a list of gallery names.
+
+*-m*, *--man*::
+    Print the entire manual page and exit.
+
+*-q*, *--quiet*::
+    Quiet output.
+
+*-t* 'gallery', *--theme*='gallery'::
+    Specify a specific theme (gallery) by name. (see list option)
+
+*-v*, *--verbose*::
+    Verbose output.
+
+*-V*, *--version*::
+    Print or show the program version and release number and exit.
