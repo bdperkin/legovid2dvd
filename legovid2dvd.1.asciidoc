@@ -24,11 +24,6 @@ OPTIONS
 include::OPTIONS[]
 
 
-FILTERS
--------
-include::FILTERS[]
-
-
 [[X1]]
 EXIT STATUS
 -----------

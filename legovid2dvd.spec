@@ -29,7 +29,7 @@ Requires:	perl(warnings)
 %define NameMixed %{expand:%%(echo %{name} | %{__sed} -e "s/\\([a-z]\\)\\([a-zA-Z0-9]*\\)/\\u\\1\\2/g")}
 %define NameLower %{expand:%%(echo %{name} | tr [:upper:] [:lower:])}
 %define Year %{expand:%%(date "+%Y")}
-%define DocFiles ACKNOWLEDGEMENTS AUTHOR AUTHORS AVAILABILITY BUGS CAVEATS COPYING COPYRIGHT DESCRIPTION FILTERS LICENSE NAME NOTES OPTIONS OUTPUT README.md RESOURCES SYNOPSIS
+%define DocFiles ACKNOWLEDGEMENTS AUTHOR AUTHORS AVAILABILITY BUGS CAVEATS COPYING COPYRIGHT DESCRIPTION LICENSE NAME NOTES OPTIONS OUTPUT README.md RESOURCES SYNOPSIS
 %define SubFiles %{name} %{name}.1.asciidoc %{DocFiles} man.asciidoc
 %define DocFormats chunked htmlhelp manpage text xhtml
 
