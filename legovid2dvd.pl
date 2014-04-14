@@ -25,6 +25,8 @@
 use strict;                               # Restrict unsafe constructs
 use warnings;                             # Control optional warnings
 use File::Compare;                        # Compare files or filehandles
+use File::LibMagic;                       # Determine MIME types of data or
+                                          # files using libmagic
 use File::Path;                           # Create or remove directory trees
 use Getopt::Long;                         # Getopt::Long - Extended processing
                                           # of command line options
@@ -160,7 +162,26 @@ $code = $browser->setopt( CURLOPT_FILE, \$body );
 if ( $DBG > 2 ) { print "Performing GET...\n"; }
 $code = $browser->perform();
 if ( $DBG > 2 ) { print "Reporing any error messages:\n"; }
-my $err  = $browser->errbuf;                          # report any error message
+my $err = $browser->errbuf;    # report any error message
+
+if ($code) {
+    die "\nCannot get "
+      . $sitemap . " -- "
+      . $code . " "
+      . $browser->strerror($code) . " "
+      . $err . "\n";
+}
+
+unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^application\/xml/ ) {
+    die "\nDid not receive XML, got -- "
+      . $browser->getinfo(CURLINFO_CONTENT_TYPE) . "\n";
+}
+else {
+    if ( $DBG > 1 ) {
+        print "Got videos from " . $sitemap . "\n";
+    }
+}
+
 my $info = $browser->getinfo(CURLINFO_SIZE_DOWNLOAD);
 if ( $DBG > 2 ) { print "Got CURLINFO_SIZE_DOWNLOAD as $info.\n"; }
 
@@ -258,14 +279,11 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         }
                     }
 
-                    xml2txt( $tryname, "loc.txt", $lnsv );
-                    check( $tryname, $chkname, "loc.txt" );
+                    xml2txt( $tryname, $chkname, "loc.txt", $lnsv );
 
-                    xml2txt( $tryname, "thumbnail_loc.txt", $vtl );
-                    check( $tryname, $chkname, "thumbnail_loc.txt" );
+                    xml2txt( $tryname, $chkname, "thumbnail_loc.txt", $vtl );
                     if ($vtl) {
-                        wget( $tryname, basename($vtl), $vtl );
-                        check( $tryname, $chkname, basename($vtl) );
+                        wget( $tryname, $chkname, basename($vtl), $vtl );
                     }
                     else {
                         if ( $DBG > 1 ) {
@@ -273,17 +291,13 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         }
                     }
 
-                    xml2txt( $tryname, "title.txt", $vt );
-                    check( $tryname, $chkname, "title.txt" );
+                    xml2txt( $tryname, $chkname, "title.txt", $vt );
 
-                    xml2txt( $tryname, "description.txt", $vde );
-                    check( $tryname, $chkname, "description.txt" );
+                    xml2txt( $tryname, $chkname, "description.txt", $vde );
 
-                    xml2txt( $tryname, "content_loc.txt", $vcl );
-                    check( $tryname, $chkname, "content_loc.txt" );
+                    xml2txt( $tryname, $chkname, "content_loc.txt", $vcl );
                     if ($vcl) {
-                        wget( $tryname, basename($vcl), $vcl );
-                        check( $tryname, $chkname, basename($vcl) );
+                        wget( $tryname, $chkname, basename($vcl), $vcl );
                     }
                     else {
                         if ( $DBG > 1 ) {
@@ -291,20 +305,15 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         }
                     }
 
-                    xml2txt( $tryname, "duration.txt", $vdu );
-                    check( $tryname, $chkname, "duration.txt" );
+                    xml2txt( $tryname, $chkname, "duration.txt", $vdu );
 
-                    xml2txt( $tryname, "publication_date.txt", $vpd );
-                    check( $tryname, $chkname, "publication_date.txt" );
+                    xml2txt( $tryname, $chkname, "publication_date.txt", $vpd );
 
-                    xml2txt( $tryname, "expiration_date.txt", $ved );
-                    check( $tryname, $chkname, "expiration_date.txt" );
+                    xml2txt( $tryname, $chkname, "expiration_date.txt", $ved );
 
-                    xml2txt( $tryname, "gallery_loc.txt", $vgl );
-                    check( $tryname, $chkname, "gallery_loc.txt" );
+                    xml2txt( $tryname, $chkname, "gallery_loc.txt", $vgl );
 
-                    xml2txt( $tryname, "gallery_title.txt", $vglt );
-                    check( $tryname, $chkname, "gallery_title.txt" );
+                    xml2txt( $tryname, $chkname, "gallery_title.txt", $vglt );
 
                     $try++;
                     $chk++;
@@ -331,7 +340,7 @@ if ($optlist) {
 
 # Dump XML data into text files
 sub xml2txt {
-    my ( $tryname, $filename, $filedata ) = @_;
+    my ( $tryname, $chkname, $filename, $filedata ) = @_;
     if ( !-f "$tryname/$filename" ) {
         unless ( open( TXTFILE, ">$tryname/$filename" ) ) {
             die "$cn create text file $filename in $tryname: $!\n";
@@ -340,6 +349,7 @@ sub xml2txt {
         print TXTFILE $filedata . "\n";
         close(TXTFILE);
     }
+    check( $tryname, $chkname, $filename );
 }
 
 # Get the base file name based on a full path
@@ -352,18 +362,20 @@ sub basename {
 
 # Dump binary data into local files
 sub wget {
-    my ( $tryname, $filename, $dluri ) = @_;
+    my ( $tryname, $chkname, $filename, $dluri ) = @_;
     if ( !-f "$tryname/$filename" ) {
         my $localfile = "$tryname/$filename";
         my $fileb;
         my $retry = 0;
         while ( $retry < $optattempts ) {
             $retry++;
+            if ( $DBG > 2 ) { print "Setting CURLOPT_URL to $dluri...\n"; }
             $browser->setopt( CURLOPT_URL, $dluri );
             unless ( open( $fileb, ">", $localfile ) ) {
                 die "$cn open $localfile for writing: $!\n";
             }
             binmode($fileb);
+            if ( $DBG > 2 ) { print "Setting CURLOPT_WRITEDATA variable...\n"; }
             $browser->setopt( CURLOPT_WRITEDATA, $fileb );
             if ( $DBG > 1 ) {
                 print "+";
@@ -371,7 +383,43 @@ sub wget {
                     print "Getting $dluri and saving content at $localfile...";
                 }
             }
-            $code = $browser->perform;
+            if ( $DBG > 2 ) { print "Performing GET...\n"; }
+            $code = $browser->perform();
+            if ( $DBG > 2 ) { print "Reporing any error messages:\n"; }
+            $err = $browser->errbuf;    # report any error message
+
+            if ($code) {
+                warn "\nCannot get "
+                  . $dluri . " -- "
+                  . $code . " "
+                  . $browser->strerror($code) . " "
+                  . $err . "\n";
+            }
+
+            my $ct = "application\/xml";
+            if ( $dluri =~ m/\.jpg$/ ) {
+                $ct = "image\/jpeg";
+            }
+            elsif ( $dluri =~ m/\.mp4$/ ) {
+                $ct = "video\/mp4";
+            }
+            else {
+                die "Cannot guess content-type based on $dluri\n";
+            }
+
+            unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^$ct/ ) {
+                die "\nDid not receive $ct, got -- "
+                  . $browser->getinfo(CURLINFO_CONTENT_TYPE) . "\n";
+            }
+            else {
+                if ( $DBG > 1 ) {
+                    print "Got videos from " . $dluri . "\n";
+                }
+            }
+
+            my $info = $browser->getinfo(CURLINFO_SIZE_DOWNLOAD);
+            if ( $DBG > 2 ) { print "Got CURLINFO_SIZE_DOWNLOAD as $info.\n"; }
+
             if ( $retry > $optattempts ) {
                 die "$cn get $dluri -- $code "
                   . $browser->strerror($code) . " "
@@ -390,6 +438,7 @@ sub wget {
             }
         }
     }
+    check( $tryname, $chkname, $filename );
 }
 
 # Check for differences in files, if none, make hard links
@@ -412,6 +461,28 @@ sub check {
         else {
             my @statchk = stat("$chkf");
             if ( $statchk[3] != $optattempts ) {
+                my $ft             = File::LibMagic->new();
+                my $type_from_file = $ft->describe_filename("$tryf");
+
+                my $ct = "application\/xml";
+                if ( $tryf =~ m/\.jpg$/ ) {
+                    $ct = "JPEG image data, JFIF standard ";
+                }
+                elsif ( $tryf =~ m/\.mp4$/ ) {
+                    $ct = "ISO Media, MPEG v4 system, ";
+                }
+                elsif ( $tryf =~ m/\.txt$/ ) {
+                    $ct = " text";
+                }
+                else {
+                    die "Cannot guess file-type based on $tryf\n";
+                }
+
+                unless ( $type_from_file =~ m/$ct/ ) {
+                    die
+"File type of $tryf expected to be \"$ct\", but was found to be \"$type_from_file\"!";
+                }
+
                 unless ( compare( "$tryf", "$chkf" ) ) {
                     if ( $DBG > 1 ) {
                         print "=";
