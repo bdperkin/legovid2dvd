@@ -30,6 +30,10 @@ use File::LibMagic;                       # Determine MIME types of data or
 use File::Path;                           # Create or remove directory trees
 use Getopt::Long;                         # Getopt::Long - Extended processing
                                           # of command line options
+use IO::Select;                           # OO interface to the select system
+                                          # call
+use IPC::Open3;                           # open a process for reading, writing,
+                                          # and error handling using open3()
 use URI::Split qw(uri_split uri_join);    # URI::Split - Parse and compose URI
                                           # strings
 use WWW::Curl::Easy;                      # WWW::Curl - Perl extension interface
@@ -161,7 +165,6 @@ if ( $DBG > 2 ) { print "Setting CURLOPT_FILE variable...\n"; }
 $code = $browser->setopt( CURLOPT_FILE, \$body );
 if ( $DBG > 2 ) { print "Performing GET...\n"; }
 $code = $browser->perform();
-if ( $DBG > 2 ) { print "Reporing any error messages:\n"; }
 my $err = $browser->errbuf;    # report any error message
 
 if ($code) {
@@ -197,10 +200,10 @@ if ( $DBG > 2 ) { print "Getting node list...\n"; }
 foreach my $url ( $urlnodes->get_nodelist ) {
     $vidcounter++;
     $totalvideos = $vidcounter;
-    if ( $DBG > 0 ) {
+    if ( $DBG > 1 ) {
         print "\rLoading...$totalvideos ";
     }
-    if ( $DBG > 1 ) {
+    if ( $DBG > 0 ) {
         print ".";
     }
     my $locnode  = $url->find('loc');
@@ -232,8 +235,8 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         my $vff   = $video_family_friendly->string_value;
         my $vgl   = $video_gallery_loc->string_value;
 
-        if ( $DBG > 0 ) {
-            printf( "[ %.30s ] %-70s\r", $vglt, $vt );
+        if ( $DBG > 1 ) {
+            printf( "[ %.30s ] %-.45s\r", $vglt, $vt );
         }
 
         if ( $DBG > 2 ) {
@@ -257,7 +260,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         $gallery{ $revvgpath[0] } = $vglt;
         unless ($optlist) {
             if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
-                if ( $DBG > 1 ) {
+                if ( $DBG > 0 ) {
                     print "!";
                 }
                 my ( $scheme, $auth, $path, $query, $frag ) =
@@ -286,7 +289,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         wget( $tryname, $chkname, basename($vtl), $vtl );
                     }
                     else {
-                        if ( $DBG > 1 ) {
+                        if ( $DBG > 0 ) {
                             warn "No URI found for $tryname thumbnail_loc!\n";
                         }
                     }
@@ -300,7 +303,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         wget( $tryname, $chkname, basename($vcl), $vcl );
                     }
                     else {
-                        if ( $DBG > 1 ) {
+                        if ( $DBG > 0 ) {
                             warn "No URI found for $tryname content_loc!\n";
                         }
                     }
@@ -320,6 +323,14 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                     if ( $chk eq $optattempts ) {
                         $chk = 0;
                     }
+
+                    convert( $tryname, $chkname, basename($vcl), "mpg" );
+                    convert( $tryname, $chkname, basename($vcl), "ac3" );
+                    convert( $tryname, $chkname, basename($vcl), "m2v" );
+                    convert( $tryname, $chkname, basename($vcl), "wav" );
+                    convert( $tryname, $chkname, basename($vcl), "pcm" );
+                    convert( $tryname, $chkname, basename($vcl), "mpa" );
+                    convert( $tryname, $chkname, basename($vcl), "mplex.mpg" );
                 }
             }
         }
@@ -377,15 +388,15 @@ sub wget {
             binmode($fileb);
             if ( $DBG > 2 ) { print "Setting CURLOPT_WRITEDATA variable...\n"; }
             $browser->setopt( CURLOPT_WRITEDATA, $fileb );
-            if ( $DBG > 1 ) {
+            if ( $DBG > 0 ) {
                 print "+";
-                if ( $DBG > 2 ) {
+                if ( $DBG > 0 ) {
                     print "Getting $dluri and saving content at $localfile...";
                 }
             }
             if ( $DBG > 2 ) { print "Performing GET...\n"; }
             $code = $browser->perform();
-            if ( $DBG > 2 ) { print "Reporing any error messages:\n"; }
+            if ( $DBG > 0 ) { print "Reporing any error messages:\n"; }
             $err = $browser->errbuf;    # report any error message
 
             if ($code) {
@@ -433,12 +444,126 @@ sub wget {
                   unless ( $code == 0 );
             }
             close($fileb);
-            if ( $DBG > 2 ) {
+            if ( $DBG > 0 ) {
                 print "done.\n";
             }
         }
     }
     check( $tryname, $chkname, $filename );
+}
+
+sub convert {
+    my ( $tryname, $chkname, $filename, $task ) = @_;
+    my $tryf = "$tryname/$filename";
+    my $chkf = "$chkname/$filename";
+    my $tfcf = "$tryf and $chkf";
+    if ( !-f "$tryf" ) {
+        die "$cn find file $tryf: $!\n";
+    }
+    my $cmd;
+    if ( $task =~ m/^mpg$/ ) {
+        my $nullaudio = "";
+        $cmd =
+            "ffprobe -v info -select_streams a \""
+          . $tryf
+          . "\" 2>&1 | grep '^    Stream #' | grep ': Audio: '";
+        warn("Checking for audio stream in $tryf with: \"$cmd\"");
+        my $rc = system($cmd);
+        if ($rc) {
+            warn(
+                "$tryf does not have an audio track, setting it to have one..."
+            );
+            $nullaudio =
+" -f lavfi -i aevalsrc=0 -shortest -c:v copy -c:a aac -strict experimental ";
+        }
+        $cmd =
+            " ffmpeg -y -i \""
+          . $tryf . "\" "
+          . $nullaudio
+          . " -target ntsc-dvd -q:a 0 -q:v 0 \""
+          . $tryf
+          . ".$task" . "\"";
+    }
+    elsif ( $task =~ m/^ac3$/ ) {
+        $cmd =
+            " ffmpeg -y -i \""
+          . $tryf . ".mpg"
+          . "\" -acodec copy -vn \""
+          . $tryf
+          . ".$task" . "\"";
+    }
+    elsif ( $task =~ m/^m2v$/ ) {
+        $cmd =
+            " ffmpeg -y -i \""
+          . $tryf . ".mpg"
+          . "\" -vcodec copy -an \""
+          . $tryf
+          . ".$task" . "\"";
+    }
+    elsif ( $task =~ m/^wav$/ ) {
+        $cmd =
+            " mplayer -noautosub -nolirc -benchmark "
+          . "-vc null -vo null "
+          . "-ao pcm:waveheader:fast:file=\""
+          . $tryf
+          . ".$task" . "\" \""
+          . $tryf . ".ac3" . "\"";
+    }
+    elsif ( $task =~ m/^pcm$/ ) {
+        $cmd =
+            " cp -a \""
+          . $tryf . ".wav" . "\" \""
+          . $tryf
+          . ".$task" . "\""
+          . " && normalize --no-progress -n \""
+          . $tryf
+          . ".$task"
+          . "\"  2>&1 | "
+          . "grep ' has zero power, ignoring...' ; "
+          . "if [ \$? -eq 0 ]; "
+          . "then echo \"skipping file "
+          . $tryf
+          . ".$task" . "\"; "
+          . "else echo \"normalizing file "
+          . $tryf
+          . ".$task"
+          . "\" && "
+          . "normalize -m \""
+          . $tryf
+          . ".$task" . "\" ; " . "fi";
+    }
+    elsif ( $task =~ m/^mpa$/ ) {
+        $cmd =
+            " ffmpeg -y -i \""
+          . $tryf . ".pcm"
+          . "\" -f ac3 -vn \""
+          . $tryf
+          . ".$task" . "\"";
+    }
+    elsif ( $task =~ m/^mplex\.mpg$/ ) {
+        $cmd =
+            " mplex -f 8 -o \""
+          . $tryf
+          . ".$task\" \""
+          . $tryf . ".m2v" . "\" \""
+          . $tryf . ".mpa" . "\"";
+    }
+    elsif ( $task =~ m/^dvda$/ ) {
+        $cmd =
+            "cd \""
+          . $tryname
+          . "\" && "
+          . "if [ -d dvd ]; then /bin/rm -r dvd; fi && "
+          . "mkdir dvd && "
+          . "dvdauthor -x \"../../meta/$tryf.xml\" -o dvd";
+    }
+    else {
+        die "Task \"$task\" is unkown!";
+    }
+
+    runcmd($cmd);
+
+    check( $tryname, $chkname, $filename . ".$task" );
 }
 
 # Check for differences in files, if none, make hard links
@@ -454,7 +579,7 @@ sub check {
     my @stattry = stat("$tryf");
     if ( $stattry[3] != $optattempts ) {
         if ( !-f "$chkf" ) {
-            if ( $DBG > 1 ) {
+            if ( $DBG > 0 ) {
                 warn "$cn find file $chkf: $!\n";
             }
         }
@@ -465,14 +590,32 @@ sub check {
                 my $type_from_file = $ft->describe_filename("$tryf");
 
                 my $ct = "application\/xml";
-                if ( $tryf =~ m/\.jpg$/ ) {
+                if ( $tryf =~ m/\.ac3$/ ) {
+                    $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
+                }
+                elsif ( $tryf =~ m/\.jpg$/ ) {
                     $ct = "JPEG image data, JFIF standard ";
+                }
+                elsif ( $tryf =~ m/\.m2v$/ ) {
+                    $ct = "MPEG sequence, v2, MP\@ML progressive";
                 }
                 elsif ( $tryf =~ m/\.mp4$/ ) {
                     $ct = "ISO Media, MPEG v4 system, ";
                 }
+                elsif ( $tryf =~ m/\.mpa$/ ) {
+                    $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
+                }
+                elsif ( $tryf =~ m/\.mpg$/ ) {
+                    $ct = "MPEG sequence, v2, program multiplex";
+                }
+                elsif ( $tryf =~ m/\.pcm$/ ) {
+                    $ct = "RIFF \\(little-endian\\) data, WAVE audio";
+                }
                 elsif ( $tryf =~ m/\.txt$/ ) {
                     $ct = " text";
+                }
+                elsif ( $tryf =~ m/\.wav$/ ) {
+                    $ct = "RIFF \\(little-endian\\) data, WAVE audio";
                 }
                 else {
                     die "Cannot guess file-type based on $tryf\n";
@@ -484,9 +627,9 @@ sub check {
                 }
 
                 unless ( compare( "$tryf", "$chkf" ) ) {
-                    if ( $DBG > 1 ) {
+                    if ( $DBG > 0 ) {
                         print "=";
-                        if ( $DBG > 2 ) {
+                        if ( $DBG > 0 ) {
                             print "Files $tfcf match.\n";
                         }
                     }
@@ -498,7 +641,7 @@ sub check {
                     }
                 }
                 else {
-                    if ( $DBG > 1 ) {
+                    if ( $DBG > 0 ) {
                         warn "Files $tfcf do NOT match.\n";
                     }
                     unless ( unlink("$tryf") ) {
@@ -510,9 +653,9 @@ sub check {
                 }
             }
             else {
-                if ( $DBG > 1 ) {
+                if ( $DBG > 0 ) {
                     print "=";
-                    if ( $DBG > 2 ) {
+                    if ( $DBG > 0 ) {
                         print "Files $tfcf have all symbolic links.\n";
                     }
                 }
@@ -520,13 +663,65 @@ sub check {
         }
     }
     else {
-        if ( $DBG > 1 ) {
+        if ( $DBG > 0 ) {
             print "=";
-            if ( $DBG > 2 ) {
+            if ( $DBG > 0 ) {
                 print "File $tryf has all symbolic links.\n";
             }
         }
     }
+}
+
+sub runcmd {
+    my ($cmd) = @_;
+
+    if ( $DBG > 0 ) {
+        print "Running command: $cmd\n";
+    }
+
+    my ( $wtr, $rdr, $err );
+    use Symbol 'gensym';
+    $err = gensym;
+
+    my $pid = open3( $wtr, $rdr, $err, $cmd );
+    my $select = new IO::Select;
+    $select->add( $rdr, $err );
+
+    while ( my @ready = $select->can_read ) {
+        foreach my $fh (@ready) {
+            my $data;
+            my $length = sysread $fh, $data, 4096;
+
+            if ( !defined $length || $length == 0 ) {
+                unless ($length) {
+                    warn "Error from child: $!\n";
+                }
+                $select->remove($fh);
+            }
+            else {
+                if ( $fh == $rdr ) {
+                    if ( $DBG > 0 ) {
+                        print "$data\n";
+                    }
+                }
+                elsif ( $fh == $err ) {
+                    if ( $DBG > 0 ) {
+                        print "$data\n";
+                    }
+                }
+                else {
+                    return undef;
+                }
+            }
+        }
+    }
+
+    waitpid( $pid, 0 );
+    my $child_exit_status = $? >> 8;
+    if ($child_exit_status) {
+        die "Command \"$cmd\" exited with code $child_exit_status: $!";
+    }
+    return 0;
 }
 
 if ( $DBG > 0 ) {
