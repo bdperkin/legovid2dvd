@@ -399,7 +399,9 @@ sub wget {
                 die "$cn open $localfile for writing: $!\n";
             }
             binmode($fileb);
-            if ( $DBG > 2 ) { print "Setting CURLOPT_WRITEDATA variable...\n"; }
+            if ( $DBG > 2 ) {
+                print "Setting CURLOPT_WRITEDATA variable...\n";
+            }
             $browser->setopt( CURLOPT_WRITEDATA, $fileb );
             if ( $DBG > 1 ) {
                 print "+";
