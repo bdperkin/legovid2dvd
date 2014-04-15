@@ -125,8 +125,7 @@ GetOptions(
 # If multiple outputs are specified, the most verbose will be used.
 if ($optquiet) {
     $DBG = 0;
-}
-else {
+} else {
     $| = 1;
 }
 
@@ -178,8 +177,7 @@ if ($code) {
 unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^application\/xml/ ) {
     die "\nDid not receive XML, got -- "
       . $browser->getinfo(CURLINFO_CONTENT_TYPE) . "\n";
-}
-else {
+} else {
     if ( $DBG > 1 ) {
         print "Got videos from " . $sitemap . "\n";
     }
@@ -292,8 +290,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         if ($wgetthumb) {
                             unlink( $tryname . "/" . basename($vtl) );
                         }
-                    }
-                    else {
+                    } else {
                         if ( $DBG > 0 ) {
                             warn "No URI found for $tryname thumbnail_loc!\n";
                         }
@@ -311,8 +308,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         if ($wgetcont) {
                             unlink( $tryname . "/" . basename($vcl) );
                         }
-                    }
-                    else {
+                    } else {
                         if ( $DBG > 0 ) {
                             warn "No URI found for $tryname content_loc!\n";
                         }
@@ -424,11 +420,9 @@ sub wget {
             my $ct = "application\/xml";
             if ( $dluri =~ m/\.jpg$/ ) {
                 $ct = "image\/jpeg";
-            }
-            elsif ( $dluri =~ m/\.mp4$/ ) {
+            } elsif ( $dluri =~ m/\.mp4$/ ) {
                 $ct = "video\/mp4";
-            }
-            else {
+            } else {
                 die "$cn guess content-type based on $dluri\n";
             }
 
@@ -436,8 +430,7 @@ sub wget {
                 warn "\nDid not receive $ct, got -- "
                   . $browser->getinfo(CURLINFO_CONTENT_TYPE) . "\n";
                 return 1;
-            }
-            else {
+            } else {
                 if ( $DBG > 1 ) {
                     print "Got videos from " . $dluri . "\n";
                 }
@@ -451,8 +444,7 @@ sub wget {
                   . $browser->strerror($code) . " "
                   . $browser->errbuf . "\n"
                   unless ( $code == 0 );
-            }
-            else {
+            } else {
                 warn "$cn get $dluri -- $code "
                   . $browser->strerror($code) . " "
                   . $browser->errbuf . "\n"
@@ -500,24 +492,21 @@ sub convert {
           . " -target ntsc-dvd -q:a 0 -q:v 0 \""
           . $tryf
           . ".$task" . "\"";
-    }
-    elsif ( $task =~ m/^ac3$/ ) {
+    } elsif ( $task =~ m/^ac3$/ ) {
         $cmd =
             " ffmpeg -y -i \""
           . $tryf . ".mpg"
           . "\" -acodec copy -vn \""
           . $tryf
           . ".$task" . "\"";
-    }
-    elsif ( $task =~ m/^m2v$/ ) {
+    } elsif ( $task =~ m/^m2v$/ ) {
         $cmd =
             " ffmpeg -y -i \""
           . $tryf . ".mpg"
           . "\" -vcodec copy -an \""
           . $tryf
           . ".$task" . "\"";
-    }
-    elsif ( $task =~ m/^wav$/ ) {
+    } elsif ( $task =~ m/^wav$/ ) {
         $cmd =
             " mplayer -noautosub -nolirc -benchmark "
           . "-vc null -vo null "
@@ -525,8 +514,7 @@ sub convert {
           . $tryf
           . ".$task" . "\" \""
           . $tryf . ".ac3" . "\"";
-    }
-    elsif ( $task =~ m/^pcm$/ ) {
+    } elsif ( $task =~ m/^pcm$/ ) {
         $cmd =
             " cp -a \""
           . $tryf . ".wav" . "\" \""
@@ -548,24 +536,21 @@ sub convert {
           . "normalize -m \""
           . $tryf
           . ".$task" . "\" ; " . "fi";
-    }
-    elsif ( $task =~ m/^mpa$/ ) {
+    } elsif ( $task =~ m/^mpa$/ ) {
         $cmd =
             " ffmpeg -y -i \""
           . $tryf . ".pcm"
           . "\" -f ac3 -vn \""
           . $tryf
           . ".$task" . "\"";
-    }
-    elsif ( $task =~ m/^mplex\.mpg$/ ) {
+    } elsif ( $task =~ m/^mplex\.mpg$/ ) {
         $cmd =
             " mplex -f 8 -o \""
           . $tryf
           . ".$task\" \""
           . $tryf . ".m2v" . "\" \""
           . $tryf . ".mpa" . "\"";
-    }
-    elsif ( $task =~ m/^dvda$/ ) {
+    } elsif ( $task =~ m/^dvda$/ ) {
         $cmd =
             "cd \""
           . $tryname
@@ -573,8 +558,7 @@ sub convert {
           . "if [ -d dvd ]; then /bin/rm -r dvd; fi && "
           . "mkdir dvd && "
           . "dvdauthor -x \"../../meta/$tryf.xml\" -o dvd";
-    }
-    else {
+    } else {
         die "Task \"$task\" is unkown!";
     }
 
@@ -599,8 +583,7 @@ sub check {
             if ( $DBG > 0 ) {
                 warn "$cn find file $chkf: $!\n";
             }
-        }
-        else {
+        } else {
             my @statchk = stat("$chkf");
             if ( $statchk[3] != $optattempts ) {
                 my $ft             = File::LibMagic->new();
@@ -609,32 +592,23 @@ sub check {
                 my $ct = "application\/xml";
                 if ( $tryf =~ m/\.ac3$/ ) {
                     $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
-                }
-                elsif ( $tryf =~ m/\.jpg$/ ) {
+                } elsif ( $tryf =~ m/\.jpg$/ ) {
                     $ct = "JPEG image data";
-                }
-                elsif ( $tryf =~ m/\.m2v$/ ) {
+                } elsif ( $tryf =~ m/\.m2v$/ ) {
                     $ct = "MPEG sequence, v2, MP\@ML progressive";
-                }
-                elsif ( $tryf =~ m/\.mp4$/ ) {
+                } elsif ( $tryf =~ m/\.mp4$/ ) {
                     $ct = "ISO Media, MPEG v4 system, ";
-                }
-                elsif ( $tryf =~ m/\.mpa$/ ) {
+                } elsif ( $tryf =~ m/\.mpa$/ ) {
                     $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
-                }
-                elsif ( $tryf =~ m/\.mpg$/ ) {
+                } elsif ( $tryf =~ m/\.mpg$/ ) {
                     $ct = "MPEG sequence, v2, program multiplex";
-                }
-                elsif ( $tryf =~ m/\.pcm$/ ) {
+                } elsif ( $tryf =~ m/\.pcm$/ ) {
                     $ct = "RIFF \\(little-endian\\) data, WAVE audio";
-                }
-                elsif ( $tryf =~ m/\.txt$/ ) {
+                } elsif ( $tryf =~ m/\.txt$/ ) {
                     $ct = " text";
-                }
-                elsif ( $tryf =~ m/\.wav$/ ) {
+                } elsif ( $tryf =~ m/\.wav$/ ) {
                     $ct = "RIFF \\(little-endian\\) data, WAVE audio";
-                }
-                else {
+                } else {
                     die "$cn guess file-type based on $tryf\n";
                 }
 
@@ -661,8 +635,7 @@ sub check {
                     unless ( link( "$tryf", "$chkf" ) ) {
                         die "$cn link $tryf to $chkf: $!\n";
                     }
-                }
-                else {
+                } else {
                     if ( $DBG > 0 ) {
                         warn "Files $tfcf do NOT match.\n";
                     }
@@ -673,8 +646,7 @@ sub check {
                         die "$cn remove $chkf: $!\n";
                     }
                 }
-            }
-            else {
+            } else {
                 if ( $DBG > 0 ) {
                     print "=";
                     if ( $DBG > 2 ) {
@@ -683,8 +655,7 @@ sub check {
                 }
             }
         }
-    }
-    else {
+    } else {
         if ( $DBG > 0 ) {
             print "=";
             if ( $DBG > 2 ) {
@@ -716,19 +687,16 @@ sub runcmd {
 
             if ( !defined $length || $length == 0 ) {
                 $select->remove($fh);
-            }
-            else {
+            } else {
                 if ( $fh == $rdr ) {
                     if ( $DBG > 2 ) {
                         print "$data\n";
                     }
-                }
-                elsif ( $fh == $err ) {
+                } elsif ( $fh == $err ) {
                     if ( $DBG > 1 ) {
                         print "$data\n";
                     }
-                }
-                else {
+                } else {
                     return undef;
                 }
             }
