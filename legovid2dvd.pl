@@ -25,6 +25,7 @@
 use strict;                               # Restrict unsafe constructs
 use warnings;                             # Control optional warnings
 use File::Compare;                        # Compare files or filehandles
+use File::Find::Rule;                     # Alternative interface to File::Find
 use File::LibMagic;                       # Determine MIME types of data or
                                           # files using libmagic
 use File::Path;                           # Create or remove directory trees
@@ -336,11 +337,6 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         convert( $tryname, $chkname, basename($vcl), "m2v" );
                         convert( $tryname, $chkname, basename($vcl), "wav" );
                         convert( $tryname, $chkname, basename($vcl), "pcm" );
-                        convert( $tryname, $chkname, basename($vcl), "mpa" );
-                        convert(
-                            $tryname,       $chkname,
-                            basename($vcl), "mplex.mpg"
-                        );
                     } ## end unless ( $wgetthumb || $wgetcont)
                 } ## end while ( $try lt $optattempts)
             } ## end if ( $revvgpath[0] =~ ...)
@@ -359,6 +355,119 @@ if ($optlist) {
     }
     exit;
 } ## end if ($optlist)
+
+foreach my $title ( keys %gallery ) {
+    if ($optgallery) {
+        if ( $title =~ m/^$optgallery$/i ) {
+            normalize($title);
+        }
+    } else {
+        normalize($title);
+    }
+} ## end foreach my $title ( keys %gallery)
+
+foreach my $url ( $urlnodes->get_nodelist ) {
+    $vidcounter++;
+    $totalvideos = $vidcounter;
+    if ( $DBG > 1 ) {
+        print "\rLoading...$totalvideos ";
+    }
+    if ( $DBG > 0 ) {
+        print ".";
+    }
+    my $locnode  = $url->find('loc');
+    my $vidnodes = $url->find('video:video');
+    foreach my $video ( $vidnodes->get_nodelist ) {
+        my $video_thumbnail_loc     = $video->find('video:thumbnail_loc');
+        my $video_title             = $video->find('video:title');
+        my $video_description       = $video->find('video:description');
+        my $video_content_loc       = $video->find('video:content_loc');
+        my $video_duration          = $video->find('video:duration');
+        my $video_publication_date  = $video->find('video:publication_date');
+        my $video_expiration_date   = $video->find('video:expiration_date');
+        my $video_view_count        = $video->find('video:view_count');
+        my $video_family_friendly   = $video->find('video:family_friendly');
+        my $video_gallery_loc       = $video->find('video:gallery_loc');
+        my $video_gallery_loc_title = $video->find('video:gallery_loc/@title');
+
+        my $vt    = $video_title->string_value;
+        my $vglt  = $video_gallery_loc_title->string_value;
+        my $urlsv = $url->string_value;
+        my $lnsv  = $locnode->string_value;
+        my $vtl   = $video_thumbnail_loc->string_value;
+        my $vde   = $video_description->string_value;
+        my $vcl   = $video_content_loc->string_value;
+        my $vdu   = $video_duration->string_value;
+        my $vpd   = $video_publication_date->string_value;
+        my $ved   = $video_expiration_date->string_value;
+        my $vvc   = $video_view_count->string_value;
+        my $vff   = $video_family_friendly->string_value;
+        my $vgl   = $video_gallery_loc->string_value;
+
+        if ( $DBG > 1 ) {
+            printf( "[ %.30s ] %-.45s\r", $vglt, $vt );
+        }
+
+        if ( $DBG > 2 ) {
+            print "$vidcounter\t\t" . $urlsv . "\n";
+            print "$vidcounter\tloc\t" . $lnsv . "\n";
+            print "$vidcounter\t\tvideo:thumbnail_loc\t" . $vtl . "\n";
+            print "$vidcounter\t\tvideo:title\t" . $vt . "\n";
+            print "$vidcounter\t\tvideo:description\t" . $vde . "\n";
+            print "$vidcounter\t\tvideo:content_loc\t" . $vcl . "\n";
+            print "$vidcounter\t\tvideo:duration\t" . $vdu . "\n";
+            print "$vidcounter\t\tvideo:publication_date\t" . $vpd . "\n";
+            print "$vidcounter\t\tvideo:expiration_date\t" . $ved . "\n";
+            print "$vidcounter\t\tvideo:view_count\t" . $vvc . "\n";
+            print "$vidcounter\t\tvideo:family_friendly\t" . $vff . "\n";
+            print "$vidcounter\t\tvideo:gallery_loc\t" . $vgl . "\n";
+            print "$vidcounter\t\tvideo:gallery_loc/\@title\t" . $vglt . "\n";
+        } ## end if ( $DBG > 2 )
+
+        my $vgpath = $vgl;
+        my @revvgpath = reverse( split( /\//, $vgpath ) );
+        $gallery{ $revvgpath[0] } = $vglt;
+        unless ($optlist) {
+            if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
+                if ( $DBG > 0 ) {
+                    print "!";
+                }
+                my ( $scheme, $auth, $path, $query, $frag ) =
+                  uri_split($locnode);
+                my $dirname = $optdownload . $path;
+                unless ( -d "$dirname" ) {
+                    unless ( mkpath($dirname) ) {
+                        die "$cn create content directory $dirname: $!\n";
+                    }
+                }
+                my $try = 0;
+                my $chk = 1;
+                while ( $try lt $optattempts ) {
+                    my $tryname = $dirname . "/" . $try;
+                    my $chkname = $dirname . "/" . $chk;
+                    unless ( -d "$tryname" ) {
+                        unless ( mkpath($tryname) ) {
+                            die "$cn create content directory $tryname: $!\n";
+                        }
+                    }
+
+                    $try++;
+                    $chk++;
+                    if ( $chk eq $optattempts ) {
+                        $chk = 0;
+                    }
+
+                    convert( $tryname, $chkname, basename($vcl), "pcm" );
+                    convert( $tryname, $chkname, basename($vcl), "mpa" );
+                    convert(
+                        $tryname,       $chkname,
+                        basename($vcl), "mplex.mpg"
+                    );
+                } ## end while ( $try lt $optattempts)
+            } ## end if ( $revvgpath[0] =~ ...)
+        } ## end unless ($optlist)
+    } ## end foreach my $video ( $vidnodes...)
+} ## end foreach my $url ( $urlnodes...)
 
 # Dump XML data into text files
 sub xml2txt {
@@ -471,6 +580,13 @@ sub convert {
         die "$cn find file $tryf: $!\n";
     }
     my $cmd;
+
+    if ( -f $tryf . ".$task" ) {
+        print "File " . $tryf . ".$task already exists.";
+        check( $tryname, $chkname, $filename . ".$task" );
+        return 0;
+    }
+
     if ( $task =~ m/^mpg$/ ) {
         my $nullaudio = "";
         $cmd =
@@ -518,10 +634,14 @@ sub convert {
           . $tryf . ".ac3" . "\"";
     } elsif ( $task =~ m/^pcm$/ ) {
         $cmd =
-            " cp -a \""
+            "if [ ! -f \""
+          . $tryf
+          . ".$task"
+          . "\" ]; then "
+          . " cp -a \""
           . $tryf . ".wav" . "\" \""
           . $tryf
-          . ".$task" . "\""
+          . ".$task" . "\"" . "; fi "
           . " && normalize --no-progress -n \""
           . $tryf
           . ".$task"
@@ -568,6 +688,45 @@ sub convert {
 
     check( $tryname, $chkname, $filename . ".$task" );
 } ## end sub convert
+
+# Normalize PCM files in a directory
+sub normalize {
+    my ($title) = @_;
+    print "Normalizing $title audio...";
+    my @gallerydirs =
+      File::Find::Rule->directory->name($title)->in($optdownload);
+    foreach my $gallerydir (@gallerydirs) {
+        print "Found directory $gallerydir\n";
+        my $try = 0;
+        my $chk = 1;
+        while ( $try lt $optattempts ) {
+            my @tryfiles = ();
+            my @trydirs =
+              File::Find::Rule->directory->name($try)->in($gallerydir);
+            foreach my $trydir (@trydirs) {
+                print "Found sub-directory $trydir\n";
+                my @pcmfiles =
+                  File::Find::Rule->file->name("*.pcm")->in($trydir);
+                foreach my $pcmfile (@pcmfiles) {
+                    print "Found PCM file $pcmfile\n";
+                    push( @tryfiles, $pcmfile );
+                }
+            } ## end foreach my $trydir (@trydirs)
+            my $cmd = "normalize -m ";
+            foreach (@tryfiles) {
+                $cmd = $cmd . " \"" . $_ . "\"";
+            }
+            print "Running command: $cmd\n";
+            runcmd($cmd);
+            $try++;
+            $chk++;
+            if ( $chk eq $optattempts ) {
+                $chk = 0;
+            }
+        } ## end while ( $try lt $optattempts)
+    } ## end foreach my $gallerydir (@gallerydirs)
+    print "done normalizing $title audio.";
+} ## end sub normalize
 
 # Check for differences in files, if none, make hard links
 sub check {
