@@ -366,11 +366,11 @@ foreach my $title ( keys %gallery ) {
     }
 } ## end foreach my $title ( keys %gallery)
 
+$vidcounter = 0;    # Counter for videos
 foreach my $url ( $urlnodes->get_nodelist ) {
     $vidcounter++;
-    $totalvideos = $vidcounter;
     if ( $DBG > 1 ) {
-        print "\rLoading...$totalvideos ";
+        print "\rLoading...$vidcounter/$totalvideos ";
     }
     if ( $DBG > 0 ) {
         print ".";
@@ -582,10 +582,12 @@ sub convert {
     my $cmd;
 
     if ( -f $tryf . ".$task" ) {
-        print "File " . $tryf . ".$task already exists.";
+        if ( $DBG > 2 ) {
+            print "File " . $tryf . ".$task already exists.";
+        }
         check( $tryname, $chkname, $filename . ".$task" );
         return 0;
-    }
+    } ## end if ( -f $tryf . ".$task")
 
     if ( $task =~ m/^mpg$/ ) {
         my $nullaudio = "";
@@ -692,11 +694,13 @@ sub convert {
 # Normalize PCM files in a directory
 sub normalize {
     my ($title) = @_;
-    print "Normalizing $title audio...";
+    if ( $DBG > 1 ) {
+        print "Normalizing $title audio...";
+    }
     my @gallerydirs =
       File::Find::Rule->directory->name($title)->in($optdownload);
     foreach my $gallerydir (@gallerydirs) {
-        print "Found directory $gallerydir\n";
+        if ( $DBG > 2 ) { print "Found directory $gallerydir\n"; }
         my $try = 0;
         my $chk = 1;
         while ( $try lt $optattempts ) {
@@ -704,11 +708,12 @@ sub normalize {
             my @trydirs =
               File::Find::Rule->directory->name($try)->in($gallerydir);
             foreach my $trydir (@trydirs) {
-                print "Found sub-directory $trydir\n";
+                if ( $DBG > 2 ) { print "Found sub-directory $trydir\n"; }
                 my @pcmfiles =
                   File::Find::Rule->file->name("*.pcm")->in($trydir);
                 foreach my $pcmfile (@pcmfiles) {
-                    print "Found PCM file $pcmfile\n";
+
+                    if ( $DBG > 2 ) { print "Found PCM file $pcmfile\n"; }
                     push( @tryfiles, $pcmfile );
                 }
             } ## end foreach my $trydir (@trydirs)
@@ -716,7 +721,10 @@ sub normalize {
             foreach (@tryfiles) {
                 $cmd = $cmd . " \"" . $_ . "\"";
             }
-            print "Running command: $cmd\n";
+
+            if ( $DBG > 2 ) {
+                print "Running command: $cmd\n";
+            }
             runcmd($cmd);
             $try++;
             $chk++;
@@ -725,7 +733,9 @@ sub normalize {
             }
         } ## end while ( $try lt $optattempts)
     } ## end foreach my $gallerydir (@gallerydirs)
-    print "done normalizing $title audio.";
+    if ( $DBG > 1 ) {
+        print "done normalizing $title audio.";
+    }
 } ## end sub normalize
 
 # Check for differences in files, if none, make hard links
