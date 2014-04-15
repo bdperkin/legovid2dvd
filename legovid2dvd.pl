@@ -99,24 +99,24 @@ my $optquiet;
 my $optverbose;
 
 GetOptions(
-            "a=i"        => \$optattempts,
-            "attempts=i" => \$optattempts,
-            "C"          => \$optcurlverbose,
-            "curlvrbs"   => \$optcurlverbose,
-            "d"          => \$optdebug,
-            "debug"      => \$optdebug,
-            "D=s"        => \$optdownload,
-            "download=s" => \$optdownload,
-            "g=s"        => \$optgallery,
-            "gallery=s"  => \$optgallery,
-            "l"          => \$optlist,
-            "list"       => \$optlist,
-            "q"          => \$optquiet,
-            "quiet"      => \$optquiet,
-            "t=s"        => \$optgallery,
-            "theme=s"    => \$optgallery,
-            "v"          => \$optverbose,
-            "verbose"    => \$optverbose,
+    "a=i"        => \$optattempts,
+    "attempts=i" => \$optattempts,
+    "C"          => \$optcurlverbose,
+    "curlvrbs"   => \$optcurlverbose,
+    "d"          => \$optdebug,
+    "debug"      => \$optdebug,
+    "D=s"        => \$optdownload,
+    "download=s" => \$optdownload,
+    "g=s"        => \$optgallery,
+    "gallery=s"  => \$optgallery,
+    "l"          => \$optlist,
+    "list"       => \$optlist,
+    "q"          => \$optquiet,
+    "quiet"      => \$optquiet,
+    "t=s"        => \$optgallery,
+    "theme=s"    => \$optgallery,
+    "v"          => \$optverbose,
+    "verbose"    => \$optverbose,
 );
 
 ################################################################################
@@ -337,8 +337,10 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         convert( $tryname, $chkname, basename($vcl), "wav" );
                         convert( $tryname, $chkname, basename($vcl), "pcm" );
                         convert( $tryname, $chkname, basename($vcl), "mpa" );
-                        convert( $tryname,       $chkname,
-                                 basename($vcl), "mplex.mpg" );
+                        convert(
+                            $tryname,       $chkname,
+                            basename($vcl), "mplex.mpg"
+                        );
                     } ## end unless ( $wgetthumb || $wgetcont)
                 } ## end while ( $try lt $optattempts)
             } ## end if ( $revvgpath[0] =~ ...)
@@ -613,9 +615,9 @@ sub check {
                 }
 
                 unless (
-                     $type_from_file =~ m/$ct/
-                     || (   $tryf =~ m/\.txt$/
-                         && $type_from_file =~ m/very short file \(no magic\)/ )
+                    $type_from_file =~ m/$ct/
+                    || (   $tryf =~ m/\.txt$/
+                        && $type_from_file =~ m/very short file \(no magic\)/ )
                   )
                 {
                     die "File type of $tryf expected to be \"$ct\", but was "
