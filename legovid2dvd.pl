@@ -285,8 +285,13 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                     xml2txt( $tryname, $chkname, "loc.txt", $lnsv );
 
                     xml2txt( $tryname, $chkname, "thumbnail_loc.txt", $vtl );
+                    my $wgetthumb;
                     if ($vtl) {
-                        wget( $tryname, $chkname, basename($vtl), $vtl );
+                        $wgetthumb =
+                          wget( $tryname, $chkname, basename($vtl), $vtl );
+                        if ($wgetthumb) {
+                            unlink( $tryname . "/" . basename($vtl) );
+                        }
                     }
                     else {
                         if ( $DBG > 0 ) {
@@ -299,8 +304,13 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                     xml2txt( $tryname, $chkname, "description.txt", $vde );
 
                     xml2txt( $tryname, $chkname, "content_loc.txt", $vcl );
+                    my $wgetcont;
                     if ($vcl) {
-                        wget( $tryname, $chkname, basename($vcl), $vcl );
+                        $wgetcont =
+                          wget( $tryname, $chkname, basename($vcl), $vcl );
+                        if ($wgetcont) {
+                            unlink( $tryname . "/" . basename($vcl) );
+                        }
                     }
                     else {
                         if ( $DBG > 0 ) {
@@ -324,13 +334,16 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         $chk = 0;
                     }
 
-                    convert( $tryname, $chkname, basename($vcl), "mpg" );
-                    convert( $tryname, $chkname, basename($vcl), "ac3" );
-                    convert( $tryname, $chkname, basename($vcl), "m2v" );
-                    convert( $tryname, $chkname, basename($vcl), "wav" );
-                    convert( $tryname, $chkname, basename($vcl), "pcm" );
-                    convert( $tryname, $chkname, basename($vcl), "mpa" );
-                    convert( $tryname, $chkname, basename($vcl), "mplex.mpg" );
+                    unless ( $wgetthumb || $wgetcont ) {
+                        convert( $tryname, $chkname, basename($vcl), "mpg" );
+                        convert( $tryname, $chkname, basename($vcl), "ac3" );
+                        convert( $tryname, $chkname, basename($vcl), "m2v" );
+                        convert( $tryname, $chkname, basename($vcl), "wav" );
+                        convert( $tryname, $chkname, basename($vcl), "pcm" );
+                        convert( $tryname, $chkname, basename($vcl), "mpa" );
+                        convert( $tryname, $chkname, basename($vcl),
+                            "mplex.mpg" );
+                    }
                 }
             }
         }
@@ -418,8 +431,9 @@ sub wget {
             }
 
             unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^$ct/ ) {
-                die "\nDid not receive $ct, got -- "
+                warn "\nDid not receive $ct, got -- "
                   . $browser->getinfo(CURLINFO_CONTENT_TYPE) . "\n";
+                return 1;
             }
             else {
                 if ( $DBG > 1 ) {
@@ -449,6 +463,7 @@ sub wget {
         }
     }
     check( $tryname, $chkname, $filename );
+    return 0;
 }
 
 sub convert {
@@ -595,7 +610,7 @@ sub check {
                     $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
                 }
                 elsif ( $tryf =~ m/\.jpg$/ ) {
-                    $ct = "JPEG image data, JFIF standard ";
+                    $ct = "JPEG image data";
                 }
                 elsif ( $tryf =~ m/\.m2v$/ ) {
                     $ct = "MPEG sequence, v2, MP\@ML progressive";
@@ -622,7 +637,12 @@ sub check {
                     die "$cn guess file-type based on $tryf\n";
                 }
 
-                unless ( $type_from_file =~ m/$ct/ ) {
+                unless (
+                    $type_from_file =~ m/$ct/
+                    || (   $tryf =~ m/\.txt$/
+                        && $type_from_file =~ m/very short file \(no magic\)/ )
+                  )
+                {
                     die
 "File type of $tryf expected to be \"$ct\", but was found to be \"$type_from_file\"!";
                 }
