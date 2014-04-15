@@ -168,7 +168,7 @@ $code = $browser->perform();
 my $err = $browser->errbuf;    # report any error message
 
 if ($code) {
-    die "\nCannot get "
+    die "\n$cn get "
       . $sitemap . " -- "
       . $code . " "
       . $browser->strerror($code) . " "
@@ -388,19 +388,18 @@ sub wget {
             binmode($fileb);
             if ( $DBG > 2 ) { print "Setting CURLOPT_WRITEDATA variable...\n"; }
             $browser->setopt( CURLOPT_WRITEDATA, $fileb );
-            if ( $DBG > 0 ) {
+            if ( $DBG > 1 ) {
                 print "+";
-                if ( $DBG > 0 ) {
-                    print "Getting $dluri and saving content at $localfile...";
+                if ( $DBG > 2 ) {
+                    print
+                      "Getting $dluri and saving content at $localfile...\n";
                 }
             }
-            if ( $DBG > 2 ) { print "Performing GET...\n"; }
             $code = $browser->perform();
-            if ( $DBG > 0 ) { print "Reporing any error messages:\n"; }
-            $err = $browser->errbuf;    # report any error message
+            $err  = $browser->errbuf;      # report any error message
 
             if ($code) {
-                warn "\nCannot get "
+                warn "\n$cn get "
                   . $dluri . " -- "
                   . $code . " "
                   . $browser->strerror($code) . " "
@@ -415,7 +414,7 @@ sub wget {
                 $ct = "video\/mp4";
             }
             else {
-                die "Cannot guess content-type based on $dluri\n";
+                die "$cn guess content-type based on $dluri\n";
             }
 
             unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^$ct/ ) {
@@ -444,7 +443,7 @@ sub wget {
                   unless ( $code == 0 );
             }
             close($fileb);
-            if ( $DBG > 0 ) {
+            if ( $DBG > 1 ) {
                 print "done.\n";
             }
         }
@@ -466,8 +465,10 @@ sub convert {
         $cmd =
             "ffprobe -v info -select_streams a \""
           . $tryf
-          . "\" 2>&1 | grep '^    Stream #' | grep ': Audio: '";
-        warn("Checking for audio stream in $tryf with: \"$cmd\"");
+          . "\" 2>&1 | grep '^    Stream #' | grep ': Audio: ' > /dev/null";
+        if ( $DBG > 2 ) {
+            warn("Checking for audio stream in $tryf with: \"$cmd\"");
+        }
         my $rc = system($cmd);
         if ($rc) {
             warn(
@@ -618,7 +619,7 @@ sub check {
                     $ct = "RIFF \\(little-endian\\) data, WAVE audio";
                 }
                 else {
-                    die "Cannot guess file-type based on $tryf\n";
+                    die "$cn guess file-type based on $tryf\n";
                 }
 
                 unless ( $type_from_file =~ m/$ct/ ) {
@@ -629,7 +630,7 @@ sub check {
                 unless ( compare( "$tryf", "$chkf" ) ) {
                     if ( $DBG > 0 ) {
                         print "=";
-                        if ( $DBG > 0 ) {
+                        if ( $DBG > 1 ) {
                             print "Files $tfcf match.\n";
                         }
                     }
@@ -655,7 +656,7 @@ sub check {
             else {
                 if ( $DBG > 0 ) {
                     print "=";
-                    if ( $DBG > 0 ) {
+                    if ( $DBG > 2 ) {
                         print "Files $tfcf have all symbolic links.\n";
                     }
                 }
@@ -665,7 +666,7 @@ sub check {
     else {
         if ( $DBG > 0 ) {
             print "=";
-            if ( $DBG > 0 ) {
+            if ( $DBG > 2 ) {
                 print "File $tryf has all symbolic links.\n";
             }
         }
@@ -675,7 +676,7 @@ sub check {
 sub runcmd {
     my ($cmd) = @_;
 
-    if ( $DBG > 0 ) {
+    if ( $DBG > 2 ) {
         print "Running command: $cmd\n";
     }
 
@@ -693,19 +694,16 @@ sub runcmd {
             my $length = sysread $fh, $data, 4096;
 
             if ( !defined $length || $length == 0 ) {
-                unless ($length) {
-                    warn "Error from child: $!\n";
-                }
                 $select->remove($fh);
             }
             else {
                 if ( $fh == $rdr ) {
-                    if ( $DBG > 0 ) {
+                    if ( $DBG > 2 ) {
                         print "$data\n";
                     }
                 }
                 elsif ( $fh == $err ) {
-                    if ( $DBG > 0 ) {
+                    if ( $DBG > 1 ) {
                         print "$data\n";
                     }
                 }
