@@ -1,5 +1,5 @@
 Name:		legovid2dvd
-Version:	0.0.2
+Version:	0.0.3
 Release:	1%{?dist}
 Summary:	LEGO® video downloader and DVD authoring tool
 
@@ -78,6 +78,16 @@ cat README.md.pandoc | %{__grep} -v ^% | %{__sed} -e 's/\*\*/\*/g' | %{__sed} -e
 
 
 %changelog
+* Tue Apr 15 2014 Brandon Perkins <bperkins@redhat.com> 0.0.3-1
+- Normalization of PCM audio. (bperkins@redhat.com)
+- add or update closing side comments after closing BLOCK brace
+  (bperkins@redhat.com)
+- cuddled else; use this style: '} else {' (bperkins@redhat.com)
+- add newlines;  ok to introduce new line breaks (bperkins@redhat.com)
+- File conversions. (bperkins@redhat.com)
+- Much better checking of data (bperkins@redhat.com)
+- Add docs. (bperkins@redhat.com)
+
 * Tue Apr 08 2014 Brandon Perkins <bperkins@redhat.com> 0.0.2-1
 - new package built with tito
 
