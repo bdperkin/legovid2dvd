@@ -489,8 +489,8 @@ sub convert {
             warn(
                 "$tryf does not have an audio track, setting it to have one..."
             );
-            $nullaudio =
-" -f lavfi -i aevalsrc=0 -shortest -c:v copy -c:a aac -strict experimental ";
+            $nullaudio = " -f lavfi -i aevalsrc=0 -shortest"
+              . " -c:v copy -c:a aac -strict experimental ";
         }
         $cmd =
             " ffmpeg -y -i \""
@@ -643,8 +643,8 @@ sub check {
                         && $type_from_file =~ m/very short file \(no magic\)/ )
                   )
                 {
-                    die
-"File type of $tryf expected to be \"$ct\", but was found to be \"$type_from_file\"!";
+                    die "File type of $tryf expected to be \"$ct\", but was "
+                      . "found to be \"$type_from_file\"!";
                 }
 
                 unless ( compare( "$tryf", "$chkf" ) ) {
