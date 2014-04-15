@@ -172,7 +172,7 @@ if ($code) {
       . $code . " "
       . $browser->strerror($code) . " "
       . $err . "\n";
-}
+} ## end if ($code)
 
 unless ( $browser->getinfo(CURLINFO_CONTENT_TYPE) =~ m/^application\/xml/ ) {
     die "\nDid not receive XML, got -- "
@@ -251,7 +251,7 @@ foreach my $url ( $urlnodes->get_nodelist ) {
             print "$vidcounter\t\tvideo:family_friendly\t" . $vff . "\n";
             print "$vidcounter\t\tvideo:gallery_loc\t" . $vgl . "\n";
             print "$vidcounter\t\tvideo:gallery_loc/\@title\t" . $vglt . "\n";
-        }
+        } ## end if ( $DBG > 2 )
 
         my $vgpath = $vgl;
         my @revvgpath = reverse( split( /\//, $vgpath ) );
@@ -339,12 +339,12 @@ foreach my $url ( $urlnodes->get_nodelist ) {
                         convert( $tryname, $chkname, basename($vcl), "mpa" );
                         convert( $tryname,       $chkname,
                                  basename($vcl), "mplex.mpg" );
-                    }
-                }
-            }
-        }
-    }
-}
+                    } ## end unless ( $wgetthumb || $wgetcont)
+                } ## end while ( $try lt $optattempts)
+            } ## end if ( $revvgpath[0] =~ ...)
+        } ## end unless ($optlist)
+    } ## end foreach my $video ( $vidnodes...)
+} ## end foreach my $url ( $urlnodes...)
 
 $browser->cleanup();    # optional
 
@@ -356,7 +356,7 @@ if ($optlist) {
         printf( "\t* %-20s%s\n", $title, $gallery{$title} );
     }
     exit;
-}
+} ## end if ($optlist)
 
 # Dump XML data into text files
 sub xml2txt {
@@ -368,9 +368,9 @@ sub xml2txt {
         binmode TXTFILE, ":utf8";
         print TXTFILE $filedata . "\n";
         close(TXTFILE);
-    }
+    } ## end if ( !-f "$tryname/$filename")
     check( $tryname, $chkname, $filename );
-}
+} ## end sub xml2txt
 
 # Get the base file name based on a full path
 sub basename {
@@ -378,7 +378,7 @@ sub basename {
     my @fullpath = split( /\//, $fulluri );
     my @revpath  = reverse(@fullpath);
     return $revpath[0];
-}
+} ## end sub basename
 
 # Dump binary data into local files
 sub wget {
@@ -405,7 +405,7 @@ sub wget {
                     print
                       "Getting $dluri and saving content at $localfile...\n";
                 }
-            }
+            } ## end if ( $DBG > 1 )
             $code = $browser->perform();
             $err  = $browser->errbuf;      # report any error message
 
@@ -415,7 +415,7 @@ sub wget {
                   . $code . " "
                   . $browser->strerror($code) . " "
                   . $err . "\n";
-            }
+            } ## end if ($code)
 
             my $ct = "application\/xml";
             if ( $dluri =~ m/\.jpg$/ ) {
@@ -449,16 +449,16 @@ sub wget {
                   . $browser->strerror($code) . " "
                   . $browser->errbuf . "\n"
                   unless ( $code == 0 );
-            }
+            } ## end else [ if ( $retry > $optattempts)]
             close($fileb);
             if ( $DBG > 1 ) {
                 print "done.\n";
             }
-        }
-    }
+        } ## end while ( $retry < $optattempts)
+    } ## end if ( !-f "$tryname/$filename")
     check( $tryname, $chkname, $filename );
     return 0;
-}
+} ## end sub wget
 
 sub convert {
     my ( $tryname, $chkname, $filename, $task ) = @_;
@@ -484,7 +484,7 @@ sub convert {
                   . " setting it to have one..." );
             $nullaudio = " -f lavfi -i aevalsrc=0 -shortest"
               . " -c:v copy -c:a aac -strict experimental ";
-        }
+        } ## end if ($rc)
         $cmd =
             " ffmpeg -y -i \""
           . $tryf . "\" "
@@ -565,7 +565,7 @@ sub convert {
     runcmd($cmd);
 
     check( $tryname, $chkname, $filename . ".$task" );
-}
+} ## end sub convert
 
 # Check for differences in files, if none, make hard links
 sub check {
@@ -620,7 +620,7 @@ sub check {
                 {
                     die "File type of $tryf expected to be \"$ct\", but was "
                       . "found to be \"$type_from_file\"!";
-                }
+                } ## end unless ( $type_from_file =~...)
 
                 unless ( compare( "$tryf", "$chkf" ) ) {
                     if ( $DBG > 0 ) {
@@ -628,7 +628,7 @@ sub check {
                         if ( $DBG > 1 ) {
                             print "Files $tfcf match.\n";
                         }
-                    }
+                    } ## end if ( $DBG > 0 )
                     unless ( unlink("$chkf") ) {
                         die "$cn remove $chkf: $!\n";
                     }
@@ -645,25 +645,25 @@ sub check {
                     unless ( unlink("$chkf") ) {
                         die "$cn remove $chkf: $!\n";
                     }
-                }
+                } ## end else
             } else {
                 if ( $DBG > 0 ) {
                     print "=";
                     if ( $DBG > 2 ) {
                         print "Files $tfcf have all symbolic links.\n";
                     }
-                }
-            }
-        }
+                } ## end if ( $DBG > 0 )
+            } ## end else [ if ( $statchk[3] != $optattempts)]
+        } ## end else [ if ( !-f "$chkf" ) ]
     } else {
         if ( $DBG > 0 ) {
             print "=";
             if ( $DBG > 2 ) {
                 print "File $tryf has all symbolic links.\n";
             }
-        }
-    }
-}
+        } ## end if ( $DBG > 0 )
+    } ## end else [ if ( $stattry[3] != $optattempts)]
+} ## end sub check
 
 sub runcmd {
     my ($cmd) = @_;
@@ -699,9 +699,9 @@ sub runcmd {
                 } else {
                     return undef;
                 }
-            }
-        }
-    }
+            } ## end else [ if ( !defined $length ...)]
+        } ## end foreach my $fh (@ready)
+    } ## end while ( my @ready = $select...)
 
     waitpid( $pid, 0 );
     my $child_exit_status = $? >> 8;
@@ -709,7 +709,7 @@ sub runcmd {
         die "Command \"$cmd\" exited with code $child_exit_status: $!";
     }
     return 0;
-}
+} ## end sub runcmd
 
 if ( $DBG > 0 ) {
     print "done.\n";
