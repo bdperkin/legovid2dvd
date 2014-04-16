@@ -623,7 +623,8 @@ sub convert {
         $cmd =
             "/usr/bin/ffprobe -v info -select_streams a \""
           . $tryf
-          . "\" 2>&1 | /usr/bin/grep '^    Stream #' | /usr/bin/grep ': Audio: ' > /dev/null";
+          . "\" 2>&1 | /usr/bin/grep '^    Stream #' |"
+          . " /usr/bin/grep ': Audio: ' > /dev/null";
         if ( $DBG > 2 ) {
             warn("Checking for audio stream in $tryf with: \"$cmd\"");
         }
