@@ -192,6 +192,7 @@ if ( $DBG > 2 ) { print "Initializing XML::XPath...\n"; }
 my $xp = XML::XPath->new($body);
 
 my %gallery;
+my %gallerycount;
 
 if ( $DBG > 2 ) { print "Finding URLs within URL Set...\n"; }
 my $urlnodes = $xp->find('/urlset/url');
@@ -235,7 +236,9 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         my $vgl   = $video_gallery_loc->string_value;
 
         if ( $DBG > 1 ) {
-            printf( "[ %.30s ] %-.45s\r", $vglt, $vt );
+            my $prtstdout = sprintf( "[ %.30s ] %-.45s\r", $vglt, $vt );
+            $prtstdout =~ s/[^[:ascii:]]//g;
+            print $prtstdout;
         }
 
         if ( $DBG > 2 ) {
@@ -257,6 +260,11 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         my $vgpath = $vgl;
         my @revvgpath = reverse( split( /\//, $vgpath ) );
         $gallery{ $revvgpath[0] } = $vglt;
+        if ( $gallerycount{ $revvgpath[0] } ) {
+            $gallerycount{ $revvgpath[0] }++;
+        } else {
+            $gallerycount{ $revvgpath[0] } = 1;
+        }
         unless ($optlist) {
             if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
                 if ( $DBG > 0 ) {
@@ -351,8 +359,12 @@ if ($optlist) {
         print "\n";
     }
     foreach my $title ( keys %gallery ) {
-        printf( "\t* %-20s%s\n", $title, $gallery{$title} );
-    }
+        my $prtstdout =
+          sprintf( "\t* [%3d] %-20s %s\n", $gallerycount{$title}, $title,
+            $gallery{$title} );
+        $prtstdout =~ s/[^[:ascii:]]//g;
+        print $prtstdout;
+    } ## end foreach my $title ( keys %gallery)
     exit;
 } ## end if ($optlist)
 
@@ -405,7 +417,9 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         my $vgl   = $video_gallery_loc->string_value;
 
         if ( $DBG > 1 ) {
-            printf( "[ %.30s ] %-.45s\r", $vglt, $vt );
+            my $prtstdout = sprintf( "[ %.30s ] %-.45s\r", $vglt, $vt );
+            $prtstdout =~ s/[^[:ascii:]]//g;
+            print $prtstdout;
         }
 
         if ( $DBG > 2 ) {
