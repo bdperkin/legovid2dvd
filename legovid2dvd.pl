@@ -358,13 +358,18 @@ if ($optlist) {
     if ( $DBG > 0 ) {
         print "\n";
     }
-    foreach my $title ( keys %gallery ) {
-        my $prtstdout =
-          sprintf( "\t* [%3d] %-20s %s\n", $gallerycount{$title}, $title,
-            $gallery{$title} );
+    foreach my $title (
+        sort { $gallerycount{$b} <=> $gallerycount{$a} }
+        keys %gallerycount
+      )
+    {
+        my $prtstdout = sprintf(
+            "\t* [%3d] %-20s %s\n", $gallerycount{$title}, $title,
+            $gallery{$title}
+        );
         $prtstdout =~ s/[^[:ascii:]]//g;
         print $prtstdout;
-    } ## end foreach my $title ( keys %gallery)
+    } ## end foreach my $title ( sort { ...})
     exit;
 } ## end if ($optlist)
 
@@ -482,6 +487,16 @@ foreach my $url ( $urlnodes->get_nodelist ) {
         } ## end unless ($optlist)
     } ## end foreach my $video ( $vidnodes...)
 } ## end foreach my $url ( $urlnodes...)
+
+foreach my $title ( keys %gallery ) {
+    if ($optgallery) {
+        if ( $title =~ m/^$optgallery$/i ) {
+            dvdgen($title);
+        }
+    } else {
+        dvdgen($title);
+    }
+} ## end foreach my $title ( keys %gallery)
 
 # Dump XML data into text files
 sub xml2txt {
@@ -751,6 +766,83 @@ sub normalize {
         print "done normalizing $title audio.";
     }
 } ## end sub normalize
+
+# Generate DVD from files in a directory
+sub dvdgen {
+    my ($title) = @_;
+    if ( $DBG > 1 ) {
+        print "Generating DVD $title...";
+    }
+    my @gallerydirs =
+      File::Find::Rule->directory->name($title)->in($optdownload);
+    foreach my $gallerydir (@gallerydirs) {
+        if ( $DBG > 2 ) { print "Found directory $gallerydir\n"; }
+        my $dvddir = $gallerydir . "/dvd";
+        my $try    = 0;
+        my $chk    = 1;
+        while ( $try lt $optattempts ) {
+            my $tryname = $dvddir . "/" . $try;
+            my $chkname = $dvddir . "/" . $chk;
+            unless ( -d "$tryname" ) {
+                unless ( mkpath($tryname) ) {
+                    die "$cn create content directory $tryname: $!\n";
+                }
+            }
+            my $manifest = $tryname . "/manifest.txt";
+            unless ( open( MANIFEST, ">$manifest" ) ) {
+                die "Cannot open manifest file $manifest for writing: $!\n";
+            }
+
+            my @contentlist;
+            $vidcounter = 0;    # Counter for videos
+            foreach my $url ( $urlnodes->get_nodelist ) {
+                $vidcounter++;
+                if ( $DBG > 1 ) {
+                    print "\rLoading...$vidcounter/$totalvideos ";
+                }
+                if ( $DBG > 0 ) {
+                    print ".";
+                }
+                my $locnode = $url->find('loc');
+                my $lnsv    = $locnode->string_value;
+                my ( $scheme, $auth, $path, $query, $frag ) =
+                  uri_split($locnode);
+                my $dirname = $optdownload . $path;
+                my $tryname = $dirname . "/" . $try;
+                my $chkname = $dirname . "/" . $chk;
+
+                my $vidnodes = $url->find('video:video');
+                foreach my $video ( $vidnodes->get_nodelist ) {
+                    my $video_content_loc = $video->find('video:content_loc');
+                    my $video_gallery_loc = $video->find('video:gallery_loc');
+                    my $vcl               = $video_content_loc->string_value;
+                    my $vgl               = $video_gallery_loc->string_value;
+                    my $vgpath            = $vgl;
+                    my @revvgpath         = reverse( split( /\//, $vgpath ) );
+                    if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
+                        my $contentfile =
+                          sprintf( "%s/%s\n", $tryname, basename($vcl) );
+                        push( @contentlist, $contentfile );
+                    }
+                } ## end foreach my $video ( $vidnodes...)
+            } ## end foreach my $url ( $urlnodes...)
+
+            foreach my $contentfile ( reverse(@contentlist) ) {
+                print MANIFEST $contentfile;
+            }
+
+            close(MANIFEST);
+            $try++;
+            $chk++;
+            if ( $chk eq $optattempts ) {
+                $chk = 0;
+            }
+        } ## end while ( $try lt $optattempts)
+    } ## end foreach my $gallerydir (@gallerydirs)
+    if ( $DBG > 1 ) {
+        print "done generating DVD $title.";
+    }
+} ## end sub dvdgen
 
 # Check for differences in files, if none, make hard links
 sub check {
