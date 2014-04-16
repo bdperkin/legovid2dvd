@@ -592,9 +592,9 @@ sub convert {
     if ( $task =~ m/^mpg$/ ) {
         my $nullaudio = "";
         $cmd =
-            "ffprobe -v info -select_streams a \""
+            "/usr/bin/ffprobe -v info -select_streams a \""
           . $tryf
-          . "\" 2>&1 | grep '^    Stream #' | grep ': Audio: ' > /dev/null";
+          . "\" 2>&1 | /usr/bin/grep '^    Stream #' | /usr/bin/grep ': Audio: ' > /dev/null";
         if ( $DBG > 2 ) {
             warn("Checking for audio stream in $tryf with: \"$cmd\"");
         }
@@ -606,7 +606,7 @@ sub convert {
               . " -c:v copy -c:a aac -strict experimental ";
         } ## end if ($rc)
         $cmd =
-            " ffmpeg -y -i \""
+            " /usr/bin/ffmpeg -y -i \""
           . $tryf . "\" "
           . $nullaudio
           . " -target ntsc-dvd -q:a 0 -q:v 0 \""
@@ -614,21 +614,21 @@ sub convert {
           . ".$task" . "\"";
     } elsif ( $task =~ m/^ac3$/ ) {
         $cmd =
-            " ffmpeg -y -i \""
+            " /usr/bin/ffmpeg -y -i \""
           . $tryf . ".mpg"
           . "\" -acodec copy -vn \""
           . $tryf
           . ".$task" . "\"";
     } elsif ( $task =~ m/^m2v$/ ) {
         $cmd =
-            " ffmpeg -y -i \""
+            " /usr/bin/ffmpeg -y -i \""
           . $tryf . ".mpg"
           . "\" -vcodec copy -an \""
           . $tryf
           . ".$task" . "\"";
     } elsif ( $task =~ m/^wav$/ ) {
         $cmd =
-            " mplayer -noautosub -nolirc -benchmark "
+            " /usr/bin/mplayer -noautosub -nolirc -benchmark "
           . "-vc null -vo null "
           . "-ao pcm:waveheader:fast:file=\""
           . $tryf
@@ -640,15 +640,15 @@ sub convert {
           . $tryf
           . ".$task"
           . "\" ]; then "
-          . " cp -a \""
+          . " /usr/bin/cp -a \""
           . $tryf . ".wav" . "\" \""
           . $tryf
           . ".$task" . "\"" . "; fi "
-          . " && normalize --no-progress -n \""
+          . " && /usr/bin/normalize --no-progress -n \""
           . $tryf
           . ".$task"
           . "\"  2>&1 | "
-          . "grep ' has zero power, ignoring...' ; "
+          . "/usr/bin/grep ' has zero power, ignoring...' ; "
           . "if [ \$? -eq 0 ]; "
           . "then echo \"skipping file "
           . $tryf
@@ -657,19 +657,19 @@ sub convert {
           . $tryf
           . ".$task"
           . "\" && "
-          . "normalize -m \""
+          . "/usr/bin/normalize -m \""
           . $tryf
           . ".$task" . "\" ; " . "fi";
     } elsif ( $task =~ m/^mpa$/ ) {
         $cmd =
-            " ffmpeg -y -i \""
+            " /usr/bin/ffmpeg -y -i \""
           . $tryf . ".pcm"
           . "\" -f ac3 -vn \""
           . $tryf
           . ".$task" . "\"";
     } elsif ( $task =~ m/^mplex\.mpg$/ ) {
         $cmd =
-            " mplex -f 8 -o \""
+            " /usr/bin/mplex -f 8 -o \""
           . $tryf
           . ".$task\" \""
           . $tryf . ".m2v" . "\" \""
@@ -679,9 +679,9 @@ sub convert {
             "cd \""
           . $tryname
           . "\" && "
-          . "if [ -d dvd ]; then /bin/rm -r dvd; fi && "
-          . "mkdir dvd && "
-          . "dvdauthor -x \"../../meta/$tryf.xml\" -o dvd";
+          . "if [ -d dvd ]; then /usr/bin/rm -r dvd; fi && "
+          . "/usr/bin/mkdir dvd && "
+          . "/usr/bin/dvdauthor -x \"../../meta/$tryf.xml\" -o dvd";
     } else {
         die "Task \"$task\" is unkown!";
     }
@@ -717,7 +717,7 @@ sub normalize {
                     push( @tryfiles, $pcmfile );
                 }
             } ## end foreach my $trydir (@trydirs)
-            my $cmd = "normalize -m ";
+            my $cmd = "/usr/bin/normalize -m ";
             foreach (@tryfiles) {
                 $cmd = $cmd . " \"" . $_ . "\"";
             }
