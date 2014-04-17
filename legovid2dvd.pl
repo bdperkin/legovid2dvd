@@ -821,10 +821,12 @@ sub dvdgen {
                     my $vgpath            = $vgl;
                     my @revvgpath         = reverse( split( /\//, $vgpath ) );
                     if ( $revvgpath[0] =~ m/^$optgallery$/i ) {
-                        my $contentfile =
-                          sprintf( "%s/%s\n", $tryname, basename($vcl) );
+                        my $contentfile = sprintf(
+                            "%s/%s.mplex.mpg\n", $tryname,
+                            basename($vcl)
+                        );
                         push( @contentlist, $contentfile );
-                    }
+                    } ## end if ( $revvgpath[0] =~ ...)
                 } ## end foreach my $video ( $vidnodes...)
             } ## end foreach my $url ( $urlnodes...)
 
@@ -833,6 +835,87 @@ sub dvdgen {
             }
 
             close(MANIFEST);
+
+            my $dvdaxml = $tryname . "/dvdauthor.xml";
+            unless ( open( DVDAXML, ">$dvdaxml" ) ) {
+                die "Cannot open DVD authoring tool "
+                  . "XML file $dvdaxml for writing: $!\n";
+            }
+
+            my $jt = 1;
+            my $nt = 0;
+            my $g2 = 0;
+
+            unless ( open( MANIFEST, "$manifest" ) ) {
+                die "Cannot open manifest file $manifest for reading: $!\n";
+            }
+            while (<MANIFEST>) {
+                $nt++;
+            }
+            close(MANIFEST);
+
+            print DVDAXML "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n";
+            print DVDAXML "<dvdauthor>\n";
+            print DVDAXML "  <vmgm>\n";
+            print DVDAXML "    <!--First Play-->\n";
+            print DVDAXML "    <fpc>jump menu entry title;</fpc>\n";
+            print DVDAXML "    <menus>\n";
+            print DVDAXML "      <video format=\"ntsc\" aspect=\"4:3\"";
+            print DVDAXML " resolution=\"720xfull\" />\n";
+            print DVDAXML "      <subpicture lang=\"EN\" />\n";
+            print DVDAXML "      <pgc entry=\"title\">\n";
+            print DVDAXML "        <pre>\n";
+            print DVDAXML "g2 = $g2; jump title 1;\n";
+            print DVDAXML "</pre>\n";
+            print DVDAXML "      </pgc>\n";
+            print DVDAXML "    </menus>\n";
+            print DVDAXML "  </vmgm>\n";
+            print DVDAXML "  <titleset>\n";
+            print DVDAXML "    <menus>\n";
+            print DVDAXML "      <video format=\"ntsc\" aspect=\"16:9\"";
+            print DVDAXML " widescreen=\"nopanscan\" />\n";
+            print DVDAXML "      <subpicture>\n";
+            print DVDAXML "        <stream id=\"0\" mode=\"widescreen\" />\n";
+            print DVDAXML "        <stream id=\"1\" mode=\"letterbox\" />\n";
+            print DVDAXML "      </subpicture>\n";
+            print DVDAXML "    </menus>\n";
+            print DVDAXML "    <titles>\n";
+            print DVDAXML "      <video format=\"ntsc\" aspect=\"16:9\"";
+            print DVDAXML " widescreen=\"nopanscan\" />\n";
+
+            unless ( open( MANIFEST, "$manifest" ) ) {
+                die "Cannot open manifest file $manifest for reading: $!\n";
+            }
+            while (<MANIFEST>) {
+                my $mpg = $_;
+                chomp $mpg;
+                $jt++;
+                if ( $jt > $nt ) {
+                    $jt = 1;
+                    $g2 = 0;
+                } else {
+                    $g2 = 1;
+                }
+
+                print DVDAXML "      <pgc>\n";
+                print DVDAXML "        <vob file=\"$mpg\" pause=\"2\" />\n";
+                if ( $g2 == 1 ) {
+                    print DVDAXML "        <post>if(g2 == $g2) {jump title";
+                    print DVDAXML " $jt;} jump title $jt;</post>\n";
+                } else {
+                    print DVDAXML
+                      "        <post>g2 = $g2; jump title 1;</post>\n";
+                }
+                print DVDAXML "      </pgc>\n";
+            } ## end while (<MANIFEST>)
+            close(MANIFEST);
+
+            print DVDAXML "    </titles>\n";
+            print DVDAXML "  </titleset>\n";
+            print DVDAXML "</dvdauthor>\n";
+
+            close(DVDAXML);
+
             $try++;
             $chk++;
             if ( $chk eq $optattempts ) {
