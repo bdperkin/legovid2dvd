@@ -18,6 +18,7 @@ BuildRequires:	/usr/bin/perltidy
 BuildRequires:	/usr/bin/podchecker
 BuildRequires:	w3m
 Requires:	/usr/bin/cp
+Requires:	/usr/bin/diff
 Requires:	/usr/bin/dvdauthor
 Requires:	/usr/bin/ffmpeg
 Requires:	/usr/bin/ffprobe
@@ -30,6 +31,7 @@ Requires:	/usr/bin/perl
 Requires:	/usr/bin/perldoc
 Requires:	/usr/bin/rm
 Requires:	coreutils
+Requires:	diffutils
 Requires:	dvdauthor
 Requires:	ffmpeg
 Requires:	grep

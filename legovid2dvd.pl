@@ -706,12 +706,20 @@ sub convert {
           . $tryf . ".mpa" . "\"";
     } elsif ( $task =~ m/^dvda$/ ) {
         $cmd =
-            "cd \""
-          . $tryname
-          . "\" && "
-          . "if [ -d dvd ]; then /usr/bin/rm -r dvd; fi && "
-          . "/usr/bin/mkdir dvd && "
-          . "/usr/bin/dvdauthor -x \"../../meta/$tryf.xml\" -o dvd";
+            "if [ -d \""
+          . $tryf . "."
+          . $task
+          . "\" ]; then /usr/bin/rm -r "
+          . $tryf . "."
+          . $task
+          . "; fi && /usr/bin/mkdir "
+          . $tryf . "."
+          . $task . " && "
+          . "/usr/bin/dvdauthor -x \""
+          . $tryf
+          . "\" -o "
+          . $tryf . "."
+          . $task;
     } else {
         die "Task \"$task\" is unkown!";
     }
@@ -916,6 +924,11 @@ sub dvdgen {
 
             close(DVDAXML);
 
+            convert(
+                $tryname,        $chkname,
+                "dvdauthor.xml", "dvda"
+            );
+
             $try++;
             $chk++;
             if ( $chk eq $optattempts ) {
@@ -934,96 +947,110 @@ sub check {
     my $tryf = "$tryname/$filename";
     my $chkf = "$chkname/$filename";
     my $tfcf = "$tryf and $chkf";
-    if ( !-f "$tryf" ) {
-        die "$cn find file $tryf: $!\n";
+    if ( !-f "$tryf" && !-d "$tryf" ) {
+        die "$cn find file or directory $tryf: $!\n";
     }
 
-    my @stattry = stat("$tryf");
-    if ( $stattry[3] != $optattempts ) {
-        if ( !-f "$chkf" ) {
-            if ( $DBG > 0 ) {
-                warn "$cn find file $chkf: $!\n";
-            }
-        } else {
-            my @statchk = stat("$chkf");
-            if ( $statchk[3] != $optattempts ) {
-                my $ft             = File::LibMagic->new();
-                my $type_from_file = $ft->describe_filename("$tryf");
-
-                my $ct = "application\/xml";
-                if ( $tryf =~ m/\.ac3$/ ) {
-                    $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
-                } elsif ( $tryf =~ m/\.jpg$/ ) {
-                    $ct = "JPEG image data";
-                } elsif ( $tryf =~ m/\.m2v$/ ) {
-                    $ct = "MPEG sequence, v2, MP\@ML progressive";
-                } elsif ( $tryf =~ m/\.mp4$/ ) {
-                    $ct = "ISO Media, MPEG v4 system, ";
-                } elsif ( $tryf =~ m/\.mpa$/ ) {
-                    $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
-                } elsif ( $tryf =~ m/\.mpg$/ ) {
-                    $ct = "MPEG sequence, v2, program multiplex";
-                } elsif ( $tryf =~ m/\.pcm$/ ) {
-                    $ct = "RIFF \\(little-endian\\) data, WAVE audio";
-                } elsif ( $tryf =~ m/\.txt$/ ) {
-                    $ct = " text";
-                } elsif ( $tryf =~ m/\.wav$/ ) {
-                    $ct = "RIFF \\(little-endian\\) data, WAVE audio";
-                } else {
-                    die "$cn guess file-type based on $tryf\n";
+    if ( -f "$tryf" ) {
+        my @stattry = stat("$tryf");
+        if ( $stattry[3] != $optattempts ) {
+            if ( !-f "$chkf" ) {
+                if ( $DBG > 0 ) {
+                    warn "$cn find file $chkf: $!\n";
                 }
+            } else {
+                my @statchk = stat("$chkf");
+                if ( $statchk[3] != $optattempts ) {
+                    my $ft             = File::LibMagic->new();
+                    my $type_from_file = $ft->describe_filename("$tryf");
 
-                unless (
-                    $type_from_file =~ m/$ct/
-                    || (   $tryf =~ m/\.txt$/
-                        && $type_from_file =~ m/very short file \(no magic\)/ )
-                  )
-                {
-                    die "File type of $tryf expected to be \"$ct\", but was "
-                      . "found to be \"$type_from_file\"!";
-                } ## end unless ( $type_from_file =~...)
+                    my $ct = "application\/xml";
+                    if ( $tryf =~ m/\.ac3$/ ) {
+                        $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
+                    } elsif ( $tryf =~ m/\.jpg$/ ) {
+                        $ct = "JPEG image data";
+                    } elsif ( $tryf =~ m/\.m2v$/ ) {
+                        $ct = "MPEG sequence, v2, MP\@ML progressive";
+                    } elsif ( $tryf =~ m/\.mp4$/ ) {
+                        $ct = "ISO Media, MPEG v4 system, ";
+                    } elsif ( $tryf =~ m/\.mpa$/ ) {
+                        $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
+                    } elsif ( $tryf =~ m/\.mpg$/ ) {
+                        $ct = "MPEG sequence, v2, program multiplex";
+                    } elsif ( $tryf =~ m/\.pcm$/ ) {
+                        $ct = "RIFF \\(little-endian\\) data, WAVE audio";
+                    } elsif ( $tryf =~ m/\.txt$/ ) {
+                        $ct = " text";
+                    } elsif ( $tryf =~ m/\.wav$/ ) {
+                        $ct = "RIFF \\(little-endian\\) data, WAVE audio";
+                    } else {
+                        die "$cn guess file-type based on $tryf\n";
+                    }
 
-                unless ( compare( "$tryf", "$chkf" ) ) {
+                    unless (
+                        $type_from_file =~ m/$ct/
+                        || (   $tryf =~ m/\.txt$/
+                            && $type_from_file =~
+                            m/very short file \(no magic\)/ )
+                      )
+                    {
+                        die
+                          "File type of $tryf expected to be \"$ct\", but was "
+                          . "found to be \"$type_from_file\"!";
+                    } ## end unless ( $type_from_file =~...)
+
+                    unless ( compare( "$tryf", "$chkf" ) ) {
+                        if ( $DBG > 0 ) {
+                            print "=";
+                            if ( $DBG > 1 ) {
+                                print "Files $tfcf match.\n";
+                            }
+                        } ## end if ( $DBG > 0 )
+                        unless ( unlink("$chkf") ) {
+                            die "$cn remove $chkf: $!\n";
+                        }
+                        unless ( link( "$tryf", "$chkf" ) ) {
+                            die "$cn link $tryf to $chkf: $!\n";
+                        }
+                    } else {
+                        if ( $DBG > 0 ) {
+                            warn "Files $tfcf do NOT match.\n";
+                        }
+                        unless ( unlink("$tryf") ) {
+                            die "$cn remove $tryf: $!\n";
+                        }
+                        unless ( unlink("$chkf") ) {
+                            die "$cn remove $chkf: $!\n";
+                        }
+                    } ## end else
+                } else {
                     if ( $DBG > 0 ) {
                         print "=";
-                        if ( $DBG > 1 ) {
-                            print "Files $tfcf match.\n";
+                        if ( $DBG > 2 ) {
+                            print "Files $tfcf have all symbolic links.\n";
                         }
                     } ## end if ( $DBG > 0 )
-                    unless ( unlink("$chkf") ) {
-                        die "$cn remove $chkf: $!\n";
-                    }
-                    unless ( link( "$tryf", "$chkf" ) ) {
-                        die "$cn link $tryf to $chkf: $!\n";
-                    }
-                } else {
-                    if ( $DBG > 0 ) {
-                        warn "Files $tfcf do NOT match.\n";
-                    }
-                    unless ( unlink("$tryf") ) {
-                        die "$cn remove $tryf: $!\n";
-                    }
-                    unless ( unlink("$chkf") ) {
-                        die "$cn remove $chkf: $!\n";
-                    }
-                } ## end else
-            } else {
-                if ( $DBG > 0 ) {
-                    print "=";
-                    if ( $DBG > 2 ) {
-                        print "Files $tfcf have all symbolic links.\n";
-                    }
-                } ## end if ( $DBG > 0 )
-            } ## end else [ if ( $statchk[3] != $optattempts)]
-        } ## end else [ if ( !-f "$chkf" ) ]
+                } ## end else [ if ( $statchk[3] != $optattempts)]
+            } ## end else [ if ( !-f "$chkf" ) ]
+        } else {
+            if ( $DBG > 0 ) {
+                print "=";
+                if ( $DBG > 2 ) {
+                    print "File $tryf has all symbolic links.\n";
+                }
+            } ## end if ( $DBG > 0 )
+        } ## end else [ if ( $stattry[3] != $optattempts)]
+    } elsif ( -d "$tryf" ) {
+        if ( runcmd("/usr/bin/diff -r \"$tryf\" \"$chkf\"") ) {
+            runcmd("if [ -d \"$tryf\" ]; then /usr/bin/rm -r \"$tryf\"; fi");
+            runcmd("if [ -d \"$chkf\" ]; then /usr/bin/rm -r \"$chkf\"; fi");
+            die("$tryf and $chkf directories do not match!");
+        } else {
+            warn("$tryf and $chkf directories match.");
+        }
     } else {
-        if ( $DBG > 0 ) {
-            print "=";
-            if ( $DBG > 2 ) {
-                print "File $tryf has all symbolic links.\n";
-            }
-        } ## end if ( $DBG > 0 )
-    } ## end else [ if ( $stattry[3] != $optattempts)]
+        die "Cannot determine what $tryf is: $!\n";
+    }
 } ## end sub check
 
 sub runcmd {
