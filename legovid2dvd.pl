@@ -1024,30 +1024,68 @@ sub check {
                           . "found to be \"$type_from_file\"!";
                     } ## end unless ( $type_from_file =~...)
 
-                    unless ( compare( "$tryf", "$chkf" ) ) {
-                        if ( $DBG > 0 ) {
-                            print "=";
-                            if ( $DBG > 1 ) {
-                                print "Files $tfcf match.\n";
+                    if ( $tryf =~ m/\.iso$/ && $type_from_file =~ m/$ct/ ) {
+                        my $tryd = "$tryname/mnt";
+                        my $chkd = "$chkname/mnt";
+                        unless ( -d "$tryd" ) {
+                            unless ( mkpath($tryd) ) {
+                                die "$cn create mount directory $tryd: $!\n";
+                                runcmd( "/usr/bin/mountpoint $tryd > /dev/null "
+                                      . "; if [ \$? -eq 0 ]; then "
+                                      . "/usr/bin/fusermount -z -u $tryd; fi" );
+                            } else {
                             }
-                        } ## end if ( $DBG > 0 )
-                        unless ( unlink("$chkf") ) {
-                            die "$cn remove $chkf: $!\n";
+                        } ## end unless ( -d "$tryd" )
+                        unless ( -d "$chkd" ) {
+                            unless ( mkpath($chkd) ) {
+                                die "$cn create mount directory $chkd: $!\n";
+                            } else {
+                                runcmd( "/usr/bin/mountpoint $chkd > /dev/null "
+                                      . "; if [ \$? -eq 0 ]; then "
+                                      . "/usr/bin/fusermount -z -u $chkd; fi" );
+                            }
+                        } ## end unless ( -d "$chkd" )
+                        runcmd("/usr/bin/fuseiso $tryf $tryd");
+                        runcmd("/usr/bin/fuseiso $chkf $chkd");
+                        check( $tryname, $chkname, "mnt" );
+                        runcmd("/usr/bin/fusermount -u $tryd");
+                        runcmd("/usr/bin/fusermount -u $chkd");
+                        if ( -d "$tryd" ) {
+                            unless ( rmdir($tryd) ) {
+                                die "$cn remove mount directory $tryd: $!\n";
+                            }
                         }
-                        unless ( link( "$tryf", "$chkf" ) ) {
-                            die "$cn link $tryf to $chkf: $!\n";
+                        if ( -d "$chkd" ) {
+                            unless ( rmdir($chkd) ) {
+                                die "$cn remove mount directory $chkd: $!\n";
+                            }
                         }
                     } else {
-                        if ( $DBG > 0 ) {
-                            warn "Files $tfcf do NOT match.\n";
-                        }
-                        unless ( unlink("$tryf") ) {
-                            die "$cn remove $tryf: $!\n";
-                        }
-                        unless ( unlink("$chkf") ) {
-                            die "$cn remove $chkf: $!\n";
-                        }
-                    } ## end else
+                        unless ( compare( "$tryf", "$chkf" ) ) {
+                            if ( $DBG > 0 ) {
+                                print "=";
+                                if ( $DBG > 1 ) {
+                                    print "Files $tfcf match.\n";
+                                }
+                            } ## end if ( $DBG > 0 )
+                            unless ( unlink("$chkf") ) {
+                                die "$cn remove $chkf: $!\n";
+                            }
+                            unless ( link( "$tryf", "$chkf" ) ) {
+                                die "$cn link $tryf to $chkf: $!\n";
+                            }
+                        } else {
+                            if ( $DBG > 0 ) {
+                                warn "Files $tfcf do NOT match.\n";
+                            }
+                            unless ( unlink("$tryf") ) {
+                                die "$cn remove $tryf: $!\n";
+                            }
+                            unless ( unlink("$chkf") ) {
+                                die "$cn remove $chkf: $!\n";
+                            }
+                        } ## end else
+                    } ## end else [ if ( $tryf =~ m/\.iso$/...)]
                 } else {
                     if ( $DBG > 0 ) {
                         print "=";
@@ -1078,7 +1116,9 @@ sub check {
                     "if [ -d \"$chkf\" ]; then /usr/bin/rm -r \"$chkf\"; fi");
                 die("$tryf and $chkf directories do not match!");
             } else {
-                warn("$tryf and $chkf directories match.");
+                if ( $DBG > 1 ) {
+                    warn("$tryf and $chkf directories match.");
+                }
             }
         } ## end else [ if ( !-d "$chkf" ) ]
     } else {

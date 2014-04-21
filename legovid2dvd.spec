@@ -24,9 +24,11 @@ Requires:	/usr/bin/ffmpeg
 Requires:	/usr/bin/ffprobe
 Requires:	/usr/bin/find
 Requires:	/usr/bin/fuseiso
+Requires:	/usr/bin/fusermount
 Requires:	/usr/bin/genisoimage
 Requires:	/usr/bin/grep
 Requires:	/usr/bin/mkdir
+Requires:	/usr/bin/mountpoint
 Requires:	/usr/bin/mplayer
 Requires:	/usr/bin/mplex
 Requires:	/usr/bin/normalize
@@ -39,6 +41,7 @@ Requires:	diffutils
 Requires:	dvdauthor
 Requires:	ffmpeg
 Requires:	findutils
+Requires:	fuse
 Requires:	fuseiso
 Requires:	genisoimage
 Requires:	grep
@@ -67,6 +70,7 @@ Requires:	perl-URI
 Requires:	perl-WWW-Curl
 Requires:	perl-XML-XPath
 Requires:	rpmfusion-free-release
+Requires:	util-linux
 
 %define NameUpper %{expand:%%(echo %{name} | tr [:lower:] [:upper:])}
 %define NameMixed %{expand:%%(echo %{name} | %{__sed} -e "s/\\([a-z]\\)\\([a-zA-Z0-9]*\\)/\\u\\1\\2/g")}
