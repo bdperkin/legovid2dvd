@@ -22,6 +22,9 @@ Requires:	/usr/bin/diff
 Requires:	/usr/bin/dvdauthor
 Requires:	/usr/bin/ffmpeg
 Requires:	/usr/bin/ffprobe
+Requires:	/usr/bin/find
+Requires:	/usr/bin/fuseiso
+Requires:	/usr/bin/genisoimage
 Requires:	/usr/bin/grep
 Requires:	/usr/bin/mkdir
 Requires:	/usr/bin/mplayer
@@ -30,10 +33,14 @@ Requires:	/usr/bin/normalize
 Requires:	/usr/bin/perl
 Requires:	/usr/bin/perldoc
 Requires:	/usr/bin/rm
+Requires:	/usr/bin/touch
 Requires:	coreutils
 Requires:	diffutils
 Requires:	dvdauthor
 Requires:	ffmpeg
+Requires:	findutils
+Requires:	fuseiso
+Requires:	genisoimage
 Requires:	grep
 Requires:	mjpegtools
 Requires:	mplayer

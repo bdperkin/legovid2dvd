@@ -605,18 +605,18 @@ sub convert {
     my $tryf = "$tryname/$filename";
     my $chkf = "$chkname/$filename";
     my $tfcf = "$tryf and $chkf";
-    if ( !-f "$tryf" ) {
-        die "$cn find file $tryf: $!\n";
+    if ( !-f "$tryf" && !-d "$tryf" ) {
+        die "$cn find file or directory $tryf: $!\n";
     }
     my $cmd;
 
-    if ( -f $tryf . ".$task" ) {
+    if ( -f $tryf . ".$task" || -d $tryf . ".$task" ) {
         if ( $DBG > 2 ) {
-            print "File " . $tryf . ".$task already exists.";
+            print "File or directory" . $tryf . ".$task already exists.";
         }
         check( $tryname, $chkname, $filename . ".$task" );
         return 0;
-    } ## end if ( -f $tryf . ".$task")
+    } ## end if ( -f $tryf . ".$task"...)
 
     if ( $task =~ m/^mpg$/ ) {
         my $nullaudio = "";
@@ -720,6 +720,25 @@ sub convert {
           . "\" -o "
           . $tryf . "."
           . $task;
+    } elsif ( $task =~ m/^iso$/ ) {
+        $cmd =
+            "if [ -f \""
+          . $tryf . "."
+          . $task
+          . "\" ]; then /usr/bin/rm "
+          . $tryf . "."
+          . $task
+          . "; fi && "
+          . "/usr/bin/find "
+          . $tryf
+          . " -exec /usr/bin/touch"
+          . " -a -m -r \""
+          . $optdownload
+          . "\" {} \\\; && "
+          . "/usr/bin/genisoimage -quiet -dvd-video -o "
+          . $tryf . "."
+          . $task . " "
+          . $tryf;
     } else {
         die "Task \"$task\" is unkown!";
     }
@@ -928,6 +947,10 @@ sub dvdgen {
                 $tryname,        $chkname,
                 "dvdauthor.xml", "dvda"
             );
+            convert(
+                $tryname,             $chkname,
+                "dvdauthor.xml.dvda", "iso"
+            );
 
             $try++;
             $chk++;
@@ -967,6 +990,8 @@ sub check {
                     my $ct = "application\/xml";
                     if ( $tryf =~ m/\.ac3$/ ) {
                         $ct = "ATSC A\/52 aka AC-3 aka Dolby Digital stream";
+                    } elsif ( $tryf =~ m/\.iso$/ ) {
+                        $ct = "UDF filesystem data";
                     } elsif ( $tryf =~ m/\.jpg$/ ) {
                         $ct = "JPEG image data";
                     } elsif ( $tryf =~ m/\.m2v$/ ) {
@@ -1041,13 +1066,21 @@ sub check {
             } ## end if ( $DBG > 0 )
         } ## end else [ if ( $stattry[3] != $optattempts)]
     } elsif ( -d "$tryf" ) {
-        if ( runcmd("/usr/bin/diff -r \"$tryf\" \"$chkf\"") ) {
-            runcmd("if [ -d \"$tryf\" ]; then /usr/bin/rm -r \"$tryf\"; fi");
-            runcmd("if [ -d \"$chkf\" ]; then /usr/bin/rm -r \"$chkf\"; fi");
-            die("$tryf and $chkf directories do not match!");
+        if ( !-d "$chkf" ) {
+            if ( $DBG > 0 ) {
+                warn "$cn find directory $chkf: $!\n";
+            }
         } else {
-            warn("$tryf and $chkf directories match.");
-        }
+            if ( runcmd("/usr/bin/diff -r \"$tryf\" \"$chkf\"") ) {
+                runcmd(
+                    "if [ -d \"$tryf\" ]; then /usr/bin/rm -r \"$tryf\"; fi");
+                runcmd(
+                    "if [ -d \"$chkf\" ]; then /usr/bin/rm -r \"$chkf\"; fi");
+                die("$tryf and $chkf directories do not match!");
+            } else {
+                warn("$tryf and $chkf directories match.");
+            }
+        } ## end else [ if ( !-d "$chkf" ) ]
     } else {
         die "Cannot determine what $tryf is: $!\n";
     }
