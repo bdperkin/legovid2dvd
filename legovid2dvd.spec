@@ -1,5 +1,5 @@
 Name:		legovid2dvd
-Version:	0.0.3
+Version:	0.0.4
 Release:	1%{?dist}
 Summary:	LEGO® video downloader and DVD authoring tool
 
@@ -125,6 +125,12 @@ cat README.md.pandoc | %{__grep} -v ^% | %{__sed} -e 's/\*\*/\*/g' | %{__sed} -e
 
 
 %changelog
+* Mon Apr 21 2014 Brandon Perkins <bperkins@redhat.com> 0.0.4-1
+- Generating ISOs. (bperkins@redhat.com)
+- DVD Authoring (bperkins@redhat.com)
+- Make command paths explicit, and add dependency requirements to the RPM spec.
+  (bperkins@redhat.com)
+
 * Tue Apr 15 2014 Brandon Perkins <bperkins@redhat.com> 0.0.3-1
 - Normalization of PCM audio. (bperkins@redhat.com)
 - add or update closing side comments after closing BLOCK brace
